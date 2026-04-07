@@ -1,0 +1,58 @@
+name: Sync Upstream To Fork
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "*/30 * * * *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-upstream
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout fork repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git identity
+        run: |
+          git config user.name "sync-bot"
+          git config user.email "sync-bot@users.noreply.github.com"
+
+      - name: Add upstream remote (authenticated if secret is set)
+        env:
+          UPSTREAM_PAT: ${{ secrets.UPSTREAM_PAT }}
+        run: |
+          if [ -n "$UPSTREAM_PAT" ]; then
+            git remote add upstream "https://x-access-token:${UPSTREAM_PAT}@github.com/SPOHF/insect-detection-yellow-traps.git"
+          else
+            git remote add upstream "https://github.com/SPOHF/insect-detection-yellow-traps.git"
+          fi
+          git fetch upstream --prune
+
+      - name: Sync branches from upstream
+        run: |
+          set -euo pipefail
+
+          BRANCHES=(
+            main
+            Development
+            chore/pm-analytics-deploy-fix-v4
+          )
+
+          for BRANCH in "${BRANCHES[@]}"; do
+            if git show-ref --verify --quiet "refs/remotes/upstream/${BRANCH}"; then
+              echo "Syncing ${BRANCH}"
+              git checkout -B "${BRANCH}" "upstream/${BRANCH}"
+              git push origin "${BRANCH}" --force-with-lease
+            else
+              echo "Skipping ${BRANCH} (not found on upstream)"
+            fi
+          done
