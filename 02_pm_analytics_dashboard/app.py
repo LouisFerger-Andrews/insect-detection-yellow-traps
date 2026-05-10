@@ -1257,6 +1257,33 @@ def run_quality_snapshot(repo_root: str) -> dict:
     return snapshot
 
 
+def quality_snapshot_has_signal(snapshot: dict) -> bool:
+    tests = snapshot.get("runtime_tests_summary", {}) or {}
+    total_tests = int(tests.get("total_tests", 0) or 0)
+    backend_lines = sum(int((check or {}).get("total_lines", 0) or 0) for check in snapshot.get("checks", []))
+    return total_tests > 0 or backend_lines > 0
+
+
+def render_quality_snapshot_diagnostics(snapshot: dict) -> None:
+    st.error(
+        "Quality snapshot was not recorded because no tests or coverage data were produced. "
+        "This usually means the Streamlit runtime is missing pytest/vitest dependencies."
+    )
+    for check in snapshot.get("checks", []):
+        label = check.get("label") or check.get("name") or "Quality check"
+        status = check.get("status", "UNKNOWN")
+        returncode = check.get("returncode", "N/A")
+        with st.expander(f"{label}: {status} (return code {returncode})"):
+            stderr = str(check.get("stderr") or "").strip()
+            stdout = str(check.get("stdout") or "").strip()
+            if stderr:
+                st.code(stderr[-4000:])
+            elif stdout:
+                st.code(stdout[-4000:])
+            else:
+                st.write("No output captured.")
+
+
 def load_quality_history() -> list[dict]:
     if not os.path.exists(QUALITY_HISTORY_PATH):
         return []
@@ -2218,9 +2245,12 @@ with quality_tab:
     with q1:
         if st.button("Run Weekly Quality Snapshot", key="quality_run_snapshot"):
             snapshot = run_quality_snapshot(REPO_ROOT)
-            history.append(snapshot)
-            save_quality_history(history)
-            st.success("Quality snapshot recorded.")
+            if quality_snapshot_has_signal(snapshot):
+                history.append(snapshot)
+                save_quality_history(history)
+                st.success("Quality snapshot recorded.")
+            else:
+                render_quality_snapshot_diagnostics(snapshot)
     with q2:
         if st.button("Clear Quality History", key="quality_clear_history"):
             history = []
