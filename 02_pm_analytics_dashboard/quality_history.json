@@ -209,5 +209,64 @@
     "frontend_coverage_pct": 86.81,
     "application_coverage_pct": 85.4,
     "coverage_pct": 85.4
+  },
+  {
+    "timestamp": "2026-05-10T17:35:25Z",
+    "total_checks": 2,
+    "passed_checks": 1,
+    "failed_checks": 1,
+    "pass_rate_pct": 50.0,
+    "checks": [
+      {
+        "name": "python -m pytest -q 03_application/tests/backend --cov=03_application/backend/app --cov-report=term --cov-report=json:/home/runner/work/insect-detection-yellow-traps/insect-detection-yellow-traps/03_application/backend/.coverage_backend.json",
+        "status": "FAIL",
+        "returncode": 1,
+        "stdout": "             42      0   100%\n03_application/backend/app/models/field_map.py                  25      0   100%\n03_application/backend/app/models/upload.py                     28      0   100%\n03_application/backend/app/models/user.py                       13      0   100%\n03_application/backend/app/schemas/__init__.py                   0      0   100%\n03_application/backend/app/schemas/auth.py                      17      0   100%\n03_application/backend/app/schemas/field.py                      9      0   100%\n03_application/backend/app/schemas/map.py                       37      0   100%\n03_application/backend/app/schemas/upload.py                    33      0   100%\n03_application/backend/app/services/__init__.py                  0      0   100%\n03_application/backend/app/services/environment_service.py     139     31    78%\n03_application/backend/app/services/graph_service.py            60     14    77%\n03_application/backend/app/services/inference_service.py        40     23    42%\n03_application/backend/app/services/upload_service.py           58     16    72%\n03_application/backend/app/services/upload_visibility.py         9      1    89%\n03_application/backend/app/utils/__init__.py                     0      0   100%\n03_application/backend/app/utils/geo.py                         80      4    95%\n--------------------------------------------------------------------------------\nTOTAL                                                         1479    257    83%\nCoverage JSON written to file /home/runner/work/insect-detection-yellow-traps/insect-detection-yellow-traps/03_application/backend/.coverage_backend.json\n=========================== short test summary info ============================\nFAILED 03_application/tests/backend/test_analytics_environment_inference.py::test_inference_service_get_model_and_run - ValueError: Image not found for inference: /tmp/pytest-of-runner/pytest-0/test_inference_service_get_mod0/image.jpg\n1 failed, 43 passed, 3 warnings in 7.41s\n",
+        "stderr": "",
+        "label": "Backend tests: pytest (03 application backend)",
+        "category": "backend_runtime",
+        "passed_tests": 43,
+        "failed_tests": 1,
+        "coverage_pct": 82.62339418526031,
+        "covered_lines": 1222,
+        "total_lines": 1479
+      },
+      {
+        "name": "npm run test -- --coverage",
+        "status": "PASS",
+        "returncode": 0,
+        "stdout": "/ProtectedRoute.test.tsx \u001b[2m(\u001b[22m\u001b[2m3 tests\u001b[22m\u001b[2m)\u001b[22m\u001b[32m 53\u001b[2mms\u001b[22m\u001b[39m\n \u001b[32m\u2713\u001b[39m src/__tests__/App.test.tsx \u001b[2m(\u001b[22m\u001b[2m2 tests\u001b[22m\u001b[2m)\u001b[22m\u001b[32m 34\u001b[2mms\u001b[22m\u001b[39m\n\n\u001b[2m Test Files \u001b[22m \u001b[1m\u001b[32m8 passed\u001b[39m\u001b[22m\u001b[90m (8)\u001b[39m\n\u001b[2m      Tests \u001b[22m \u001b[1m\u001b[32m30 passed\u001b[39m\u001b[22m\u001b[90m (30)\u001b[39m\n\u001b[2m   Start at \u001b[22m 17:35:20\n\u001b[2m   Duration \u001b[22m 4.72s\u001b[2m (transform 1.72s, setup 582ms, collect 3.51s, tests 1.96s, environment 4.39s, prepare 804ms)\u001b[22m\n\n\u001b[34m % \u001b[39m\u001b[2mCoverage report from \u001b[22m\u001b[33mistanbul\u001b[39m\n-------------------|---------|----------|---------|---------|-------------------\nFile               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s \n-------------------|---------|----------|---------|---------|-------------------\nAll files          |   83.94 |    73.16 |   81.69 |   86.81 |                   \n src               |     100 |      100 |     100 |     100 |                   \n  App.tsx          |     100 |      100 |     100 |     100 |                   \n src/api           |     100 |    84.61 |     100 |     100 |                   \n  client.ts        |     100 |    84.61 |     100 |     100 | 3,24              \n src/components    |   72.12 |     73.8 |   65.15 |   75.12 |                   \n  ...apManager.tsx |   71.36 |    73.17 |   64.61 |   74.37 | ...31-534,580-583 \n  ...ctedRoute.tsx |     100 |      100 |     100 |     100 |                   \n src/context       |   97.22 |       75 |     100 |   97.22 |                   \n  AuthContext.tsx  |   97.22 |       75 |     100 |   97.22 | 79                \n src/pages         |   87.83 |     72.5 |   87.96 |   90.93 |                   \n  AdminPage.tsx    |     100 |       90 |     100 |     100 | 43                \n  ...boardPage.tsx |   86.56 |    71.12 |   86.77 |   89.89 | ...,765,1049,1057 \n  LoginPage.tsx    |     100 |    93.75 |     100 |     100 | 33                \n-------------------|---------|----------|---------|---------|-------------------\n",
+        "stderr": "",
+        "label": "Frontend tests: vitest (03 application frontend)",
+        "category": "frontend_runtime",
+        "passed_tests": 8,
+        "failed_tests": 0,
+        "coverage_pct": 86.81,
+        "covered_lines": 599,
+        "total_lines": 690
+      }
+    ],
+    "backend_runtime_summary": {
+      "passed": 0,
+      "failed": 1,
+      "total": 1
+    },
+    "backend_runtime_pass_rate_pct": 0.0,
+    "frontend_runtime_summary": {
+      "passed": 1,
+      "failed": 0,
+      "total": 1
+    },
+    "frontend_runtime_pass_rate_pct": 100.0,
+    "runtime_tests_summary": {
+      "passed_tests": 51,
+      "failed_tests": 1,
+      "total_tests": 52
+    },
+    "runtime_tests_pass_rate_pct": 98.1,
+    "backend_coverage_pct": 82.62339418526031,
+    "frontend_coverage_pct": 86.81,
+    "application_coverage_pct": 84.0,
+    "coverage_pct": 84.0
   }
 ]
