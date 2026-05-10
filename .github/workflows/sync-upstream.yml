@@ -44,7 +44,6 @@ jobs:
           BRANCHES=(
             main
             Development
-            chore/pm-analytics-deploy-fix-v4
           )
 
           for BRANCH in "${BRANCHES[@]}"; do

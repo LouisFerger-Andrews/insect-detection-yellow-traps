@@ -1,0 +1,68 @@
+name: Quality History
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - chore/pm-analytics-deploy-fix-v4
+    paths-ignore:
+      - "02_pm_analytics_dashboard/quality_history.json"
+  schedule:
+    - cron: "30 2 * * 1"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: quality-history-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  update-quality-history:
+    if: github.repository_owner == 'LouisFerger-Andrews'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout deploy branch
+        uses: actions/checkout@v4
+        with:
+          ref: chore/pm-analytics-deploy-fix-v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+          cache-dependency-path: 03_application/backend/requirements.txt
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.11.1"
+          cache: "npm"
+          cache-dependency-path: 03_application/frontend/package-lock.json
+
+      - name: Install backend test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r 03_application/backend/requirements.txt pytest pytest-cov
+
+      - name: Install frontend dependencies
+        working-directory: 03_application/frontend
+        run: npm ci
+
+      - name: Update quality history
+        run: python 02_pm_analytics_dashboard/scripts/update_quality_history.py
+
+      - name: Commit quality history
+        if: always()
+        run: |
+          if git diff --quiet -- 02_pm_analytics_dashboard/quality_history.json; then
+            echo "No quality history changes to commit."
+            exit 0
+          fi
+          git config user.name "quality-bot"
+          git config user.email "quality-bot@users.noreply.github.com"
+          git add 02_pm_analytics_dashboard/quality_history.json
+          git commit -m "Update dashboard quality history"
+          git push origin HEAD:chore/pm-analytics-deploy-fix-v4
