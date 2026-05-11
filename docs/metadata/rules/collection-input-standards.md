@@ -2,6 +2,8 @@
 
 These standards define the accepted input shape at the point of collection for trap image uploads.
 
+The full structured request format is defined in `structured-upload-format.md`.
+
 ## Image files
 
 | Rule | Standard |
