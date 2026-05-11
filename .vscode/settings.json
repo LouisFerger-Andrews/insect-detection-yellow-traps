@@ -1,0 +1,8 @@
+{
+    "chat.tools.terminal.autoApprove": {
+        "/^python3 -m pytest 03_application/tests/backend/test_analytics_environment_inference\\.py::test_insight_dashboard_filters_kpis_results_and_predictions -v 2>&1 \\| head -50$/": {
+            "approve": true,
+            "matchCommandLine": true
+        }
+    }
+}
