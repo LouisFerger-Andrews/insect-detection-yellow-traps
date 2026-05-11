@@ -12,6 +12,7 @@ This folder defines the required metadata structure for insect yellow-trap uploa
 
 - `schema/metadata.schema.json`: JSON Schema (source of truth)
 - `rules/validation-rules.md`: practical validation rules and constraints
+- `rules/collection-input-standards.md`: upload-time image and metadata standards
 - `examples/`: minimal valid payload examples
 
 ## Versioning

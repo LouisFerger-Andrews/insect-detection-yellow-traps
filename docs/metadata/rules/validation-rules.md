@@ -11,6 +11,16 @@
 - `device_id`: camera or mobile capture device ID
 - `operator_id`: user or technician identifier
 
+## Collection upload constraints
+
+- Accepted image extensions: `.jpg`, `.jpeg`, `.png`, `.webp`.
+- Maximum image size: 20 MB per file.
+- Reject empty image files.
+- Reject production upload filenames that look like training, validation, or test dataset assets.
+- Reject upload batches before processing when any file fails validation.
+- Require `start_date` and `end_date` as ISO dates; `end_date` must be on or after `start_date`.
+- Require an identified field/trap context before ingesting images.
+
 ## Normalization
 
 - Trim leading/trailing spaces for all string values.
