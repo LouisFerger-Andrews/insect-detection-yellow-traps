@@ -9,6 +9,7 @@ from fastapi import HTTPException
 from app.api import admin as admin_api
 from app.api import auth as auth_api
 from app.api import deps as deps_api
+from app.core.rate_limit import clear_rate_limit_state
 
 
 @dataclass
@@ -68,6 +69,7 @@ class FakeDB:
 
 
 def test_register_success_and_duplicate(monkeypatch: pytest.MonkeyPatch) -> None:
+    clear_rate_limit_state()
     user_payload = auth_api.RegisterRequest(email="u@example.com", full_name="User", password="password123")
 
     class FakeGraph:
@@ -81,16 +83,17 @@ def test_register_success_and_duplicate(monkeypatch: pytest.MonkeyPatch) -> None
     monkeypatch.setattr(auth_api, "hash_password", lambda p: "hashed")
 
     db_ok = FakeDB([FakeQuery(first_value=None)])
-    profile = auth_api.register(user_payload, db_ok)
+    profile = auth_api.register(user_payload, request=None, db=db_ok)
     assert profile.email == "u@example.com"
 
     db_dup = FakeDB([FakeQuery(first_value=DummyUser(1, "u@example.com", "U", "x"))])
     with pytest.raises(HTTPException) as exc:
-        auth_api.register(user_payload, db_dup)
+        auth_api.register(user_payload, request=None, db=db_dup)
     assert exc.value.status_code == 400
 
 
 def test_login_and_me(monkeypatch: pytest.MonkeyPatch) -> None:
+    clear_rate_limit_state()
     payload = auth_api.LoginRequest(email="u@example.com", password="password123")
     user = DummyUser(7, "u@example.com", "U", "hashed", role="admin")
 
@@ -98,16 +101,32 @@ def test_login_and_me(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(auth_api, "verify_password", lambda p, h: True)
     monkeypatch.setattr(auth_api, "create_access_token", lambda subject, role: f"token-{subject}-{role}")
 
-    token = auth_api.login(payload, db_ok)
+    token = auth_api.login(payload, request=None, db=db_ok)
     assert token.access_token == "token-7-admin"
 
     db_bad = FakeDB([FakeQuery(first_value=user)])
     monkeypatch.setattr(auth_api, "verify_password", lambda p, h: False)
     with pytest.raises(HTTPException) as exc:
-        auth_api.login(payload, db_bad)
+        auth_api.login(payload, request=None, db=db_bad)
     assert exc.value.status_code == 401
 
     assert auth_api.me(user).email == "u@example.com"
+
+
+def test_auth_rate_limit_rejects_repeated_attempts(monkeypatch: pytest.MonkeyPatch) -> None:
+    clear_rate_limit_state()
+    payload = auth_api.LoginRequest(email="limit@example.com", password="password123")
+    monkeypatch.setattr(auth_api, "verify_password", lambda p, h: False)
+    db = FakeDB([FakeQuery(first_value=DummyUser(7, "limit@example.com", "U", "hashed"))] * 8)
+    for _ in range(8):
+        with pytest.raises(HTTPException) as exc:
+            auth_api.login(payload, request=None, db=db)
+        assert exc.value.status_code == 401
+
+    with pytest.raises(HTTPException) as exc2:
+        auth_api.login(payload, request=None, db=FakeDB([FakeQuery(first_value=None)]))
+    assert exc2.value.status_code == 429
+    clear_rate_limit_state()
 
 
 def test_get_current_user_and_require_admin(monkeypatch: pytest.MonkeyPatch) -> None:
