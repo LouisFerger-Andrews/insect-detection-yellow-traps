@@ -12,6 +12,7 @@ This folder documents end-to-end operational flows for the insect identification
 - `inference_flow.md`: model loading and prediction path
 - `prediction_result_storage_flow.md`: prediction result persistence and retrieval
 - `analytics_flow.md`: aggregation and reporting path
+- `insight_dashboard_reporting_flow.md`: V1 dashboard filtering, inspection, and CSV export
 
 ## Documentation standard
 

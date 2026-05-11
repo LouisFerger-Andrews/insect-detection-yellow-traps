@@ -20,6 +20,7 @@ Coverage status scale:
 | #51 | [Feature][MVP] Structured Upload Workflow with Metadata | Open | Done | `upload_ingestion_flow.md`, `workflow_catalog.md`, `docs/metadata/rules/structured-upload-format.md` |
 | #52 | [Feature][MVP] Batch Image Upload Support | Open | Done | `upload_ingestion_flow.md` |
 | #53 | [Feature][MVP] Input Standardisation and Validation at Collection | Open | Done | `docs/metadata/rules/collection-input-standards.md` |
+| #121 | [Task][V1] Insight Dashboard with Reporting and Export | Open | Done | `insight_dashboard_reporting_flow.md` |
 
 ## Metadata task chain
 
