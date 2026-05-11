@@ -7,9 +7,13 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 from app.api import analytics as analytics_api
 from app.api import environment as environment_api
+from app.db.base import Base
+from app.models import Detection, FieldMap, TrapUpload, User
 from app.services.inference_service import InferenceService
 
 
@@ -77,6 +81,98 @@ class FakeDB:
         return self._queries.pop(0)
 
 
+@pytest.fixture()
+def insight_db_session(tmp_path: Path) -> Session:
+    engine = create_engine(f"sqlite:///{tmp_path / 'insights.db'}")
+    Base.metadata.create_all(bind=engine)
+    with Session(engine) as db:
+        yield db
+    Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture()
+def insight_seed_data(insight_db_session: Session) -> User:
+    user = User(
+        id=77,
+        email="insights@example.test",
+        full_name="Insight User",
+        password_hash="not-used",
+        role="user",
+        is_active=True,
+    )
+    other_user = User(
+        id=88,
+        email="other-insights@example.test",
+        full_name="Other User",
+        password_hash="not-used",
+        role="user",
+        is_active=True,
+    )
+    field_a = FieldMap(
+        id="field-a",
+        owner_user_id=user.id,
+        name="North Field",
+        polygon_geojson="{}",
+        area_m2=100.0,
+    )
+    field_b = FieldMap(
+        id="field-b",
+        owner_user_id=user.id,
+        name="South Field",
+        polygon_geojson="{}",
+        area_m2=120.0,
+    )
+    hidden_field = FieldMap(
+        id="hidden-field",
+        owner_user_id=other_user.id,
+        name="Hidden Field",
+        polygon_geojson="{}",
+        area_m2=80.0,
+    )
+    upload_a = TrapUpload(
+        user_id=user.id,
+        field_id=field_a.id,
+        trap_id="trap-a",
+        trap_code="T-A",
+        capture_date=date(2026, 5, 1),
+        image_path="storage/uploads/field-a/2026/05/01/T-A/a.jpg",
+        detection_count=5,
+        confidence_avg=0.82,
+    )
+    upload_b = TrapUpload(
+        user_id=user.id,
+        field_id=field_b.id,
+        trap_id="trap-b",
+        trap_code="T-B",
+        capture_date=date(2026, 5, 2),
+        image_path="storage/uploads/field-b/2026/05/02/T-B/b.jpg",
+        detection_count=2,
+        confidence_avg=0.61,
+    )
+    hidden_upload = TrapUpload(
+        user_id=other_user.id,
+        field_id=hidden_field.id,
+        trap_id="trap-hidden",
+        trap_code="T-H",
+        capture_date=date(2026, 5, 3),
+        image_path="storage/uploads/hidden-field/2026/05/03/T-H/h.jpg",
+        detection_count=99,
+        confidence_avg=0.95,
+    )
+    insight_db_session.add_all([user, other_user, field_a, field_b, hidden_field, upload_a, upload_b, hidden_upload])
+    insight_db_session.flush()
+    insight_db_session.add_all(
+        [
+            Detection(upload_id=upload_a.id, class_id=0, confidence=0.9, x1=1, y1=2, x2=3, y2=4),
+            Detection(upload_id=upload_a.id, class_id=1, confidence=0.74, x1=5, y1=6, x2=7, y2=8),
+            Detection(upload_id=upload_b.id, class_id=0, confidence=0.61, x1=10, y1=11, x2=12, y2=13),
+            Detection(upload_id=hidden_upload.id, class_id=2, confidence=0.95, x1=20, y1=21, x2=22, y2=23),
+        ]
+    )
+    insight_db_session.commit()
+    return user
+
+
 def test_analytics_overview_happy_path_admin() -> None:
     uploads_rows = [
         (SimpleNamespace(id=1, detection_count=5), SimpleNamespace(id="field-1", name="Field 1")),
@@ -119,6 +215,59 @@ def test_analytics_overview_field_not_found() -> None:
             current_user=DummyUser(id=2, role="user"),
         )
     assert exc.value.status_code == 404
+
+
+def test_insight_dashboard_filters_kpis_results_and_predictions(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 2),
+        min_detections=2,
+        min_confidence=0.6,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    assert out["context"]["scope"] == "owned-fields"
+    assert out["context"]["dataset_version"] == "metadata-v1.0.0"
+    assert out["kpis"]["processed_images"] == 2
+    assert out["kpis"]["total_detections"] == 7
+    assert out["kpis"]["avg_detections_per_image"] == 3.5
+    assert out["kpis"]["highest_activity_field"]["field_name"] == "North Field"
+    assert out["kpis"]["highest_activity_trap"]["trap_code"] == "T-A"
+    assert [row["capture_date"] for row in out["trend"]] == ["2026-05-01", "2026-05-02"]
+    assert {row["field_id"] for row in out["comparisons"]["by_field"]} == {"field-a", "field-b"}
+    assert [row["upload_id"] for row in out["results"]] == [2, 1]
+    assert out["results"][1]["detections"][0]["bbox_xyxy"] == [1.0, 2.0, 3.0, 4.0]
+    assert all(result["field_id"] != "hidden-field" for result in out["results"])
+
+
+def test_insight_dashboard_csv_export_includes_context_and_rows(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    response = analytics_api.export_insight_dashboard_csv(
+        field_id="field-a",
+        trap_code="T-A",
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 1),
+        min_detections=1,
+        min_confidence=0.7,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    text = response.body.decode("utf-8")
+    assert "dataset_version,metadata-v1.0.0" in text
+    assert "filter_field_id,field-a" in text
+    assert "filter_min_confidence,0.7" in text
+    assert "upload_id,image_path,field_id,field_name,trap_id,trap_code,capture_date,detection_count,confidence_avg,prediction_count,prediction_metadata" in text
+    assert "North Field" in text
+    assert "class=0 conf=0.9000" in text
 
 
 def test_environment_get_field_or_403_and_sync(monkeypatch: pytest.MonkeyPatch) -> None:
