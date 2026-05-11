@@ -12,6 +12,7 @@ import type {
   FieldMapDetail,
   InsightDashboard,
   ModelStats,
+  SupportChatResponse,
   TrapPoint,
   UploadBatchResponse,
   UploadDetail,
@@ -222,7 +223,7 @@ function SimpleLineChart({
   );
 }
 
-type SectionKey = 'home' | 'new-field' | 'upload' | 'analytics' | 'model' | 'explore' | 'settings';
+type SectionKey = 'home' | 'new-field' | 'upload' | 'analytics' | 'model' | 'explore' | 'support' | 'settings';
 
 const SECTION_CARDS: Array<{ key: SectionKey; title: string; description: string }> = [
   { key: 'new-field', title: 'Create New Field', description: 'Search location, draw field boundary, and place traps.' },
@@ -230,6 +231,7 @@ const SECTION_CARDS: Array<{ key: SectionKey; title: string; description: string
   { key: 'analytics', title: 'Monitoring Analytics', description: 'Review detections by date, field, and trap.' },
   { key: 'model', title: 'Insect Model Overview', description: 'Inspect model quality and live runtime performance metrics.' },
   { key: 'explore', title: 'Exploratory Analysis', description: 'Ask questions about your uploads and detection trends.' },
+  { key: 'support', title: 'Support Chatbot', description: 'Get in-app help on where features are and how to use them.' },
   { key: 'settings', title: 'Account Settings', description: 'View account profile and access scope.' },
 ];
 
@@ -284,6 +286,14 @@ export default function DashboardPage() {
     {
       role: 'assistant',
       text: 'Ask me anything about trap uploads, detections, fields, and trends in your current data scope.',
+    },
+  ]);
+  const [supportInput, setSupportInput] = useState('');
+  const [supportBusy, setSupportBusy] = useState(false);
+  const [supportMessages, setSupportMessages] = useState<Array<{ role: 'user' | 'assistant'; text: string }>>([
+    {
+      role: 'assistant',
+      text: 'I can help you navigate the existing platform modules and where to find specific actions.',
     },
   ]);
   const selectedFiles = useMemo(() => (files ? Array.from(files) : []), [files]);
@@ -1451,6 +1461,60 @@ export default function DashboardPage() {
     </section>
   );
 
+  const runSupportChat = async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!token) return;
+    const question = supportInput.trim();
+    if (!question) return;
+    setSupportBusy(true);
+    setError('');
+    setSupportMessages((prev) => [...prev, { role: 'user', text: question }]);
+    setSupportInput('');
+    try {
+      const response = await apiClient.post<SupportChatResponse>('/api/analysis/support-chat', { question }, token);
+      const provider = response.used_openai ? 'OpenAI' : 'Local';
+      const providerNote = response.provider_error ? ` (provider error: ${response.provider_error})` : '';
+      setSupportMessages((prev) => [...prev, { role: 'assistant', text: `${response.answer}\n\nSource: ${provider}${providerNote}` }]);
+    } catch (err) {
+      setSupportMessages((prev) => [
+        ...prev,
+        { role: 'assistant', text: err instanceof Error ? err.message : 'Support request failed.' },
+      ]);
+    } finally {
+      setSupportBusy(false);
+    }
+  };
+
+  const renderSupportChat = () => (
+    <section className="card">
+      <h2>Support Chatbot</h2>
+      <p>Ask where to find actions in the app and how existing modules should be used.</p>
+      <div className="card">
+        <h3>Navigation & Usage Help</h3>
+        <div className="chat-log">
+          {supportMessages.map((message, idx) => (
+            <div key={`${message.role}-${idx}`} className={`chat-bubble ${message.role === 'user' ? 'chat-user' : 'chat-assistant'}`}>
+              <strong>{message.role === 'user' ? 'You' : 'Assistant'}:</strong> {message.text}
+            </div>
+          ))}
+        </div>
+        <form onSubmit={runSupportChat} className="form">
+          <label>
+            Ask support
+            <input
+              placeholder="Example: Where do I filter by trap and detection count?"
+              value={supportInput}
+              onChange={(e) => setSupportInput(e.target.value)}
+            />
+          </label>
+          <button type="submit" disabled={supportBusy}>
+            {supportBusy ? 'Replying...' : 'Ask Support'}
+          </button>
+        </form>
+      </div>
+    </section>
+  );
+
   const renderSettings = () => (
     <section className="card">
       <h2>Settings</h2>
@@ -1488,6 +1552,7 @@ export default function DashboardPage() {
       {section === 'analytics' ? renderAnalytics() : null}
       {section === 'model' ? renderModelOverview() : null}
       {section === 'explore' ? renderExploratoryAnalysis() : null}
+      {section === 'support' ? renderSupportChat() : null}
       {section === 'settings' ? renderSettings() : null}
     </div>
   );

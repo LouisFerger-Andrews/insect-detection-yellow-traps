@@ -243,6 +243,25 @@ describe('DashboardPage', () => {
     await waitFor(() => expect(postMock).toHaveBeenCalledWith('/api/analysis/exploratory-report', expect.any(Object), 'token-1'));
   });
 
+  it('supports support-chatbot flow', async () => {
+    postMock.mockResolvedValueOnce({
+      answer: 'Go to Home > Monitoring Analytics.',
+      used_openai: false,
+      provider_error: '',
+      context: {
+        user: { role: 'admin' },
+        modules: [],
+        workspace: { upload_count: 1, detection_count: 2 },
+      },
+    });
+    render(<DashboardPage />);
+    fireEvent.click(screen.getByRole('button', { name: /Support Chatbot/i }));
+    await waitFor(() => expect(screen.getByText('Navigation & Usage Help')).toBeInTheDocument());
+    fireEvent.change(screen.getByLabelText('Ask support'), { target: { value: 'Where are filters?' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Ask Support' }));
+    await waitFor(() => expect(postMock).toHaveBeenCalledWith('/api/analysis/support-chat', { question: 'Where are filters?' }, 'token-1'));
+  });
+
   it('renders model and settings sections and supports logout', async () => {
     render(<DashboardPage />);
     fireEvent.click(screen.getByRole('button', { name: /Insect Model Overview/i }));

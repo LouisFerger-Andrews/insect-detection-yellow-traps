@@ -613,6 +613,141 @@ def exploratory_chat(
     }
 
 
+@router.post('/support-chat')
+def support_chat(
+    payload: dict,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    question = str(payload.get('question', '')).strip()
+    if not question:
+        raise HTTPException(status_code=400, detail='question is required')
+
+    # Scope support responses to real, currently-implemented platform modules.
+    module_inventory = [
+        {
+            'name': 'Create New Field',
+            'purpose': 'search location, draw field boundary, and place trap points',
+            'ui_path': 'Home > Create New Field',
+        },
+        {
+            'name': 'Upload Trap Images',
+            'purpose': 'select field/trap and upload JPG/PNG images with date range metadata',
+            'ui_path': 'Home > Upload Trap Images',
+        },
+        {
+            'name': 'Monitoring Analytics',
+            'purpose': 'review KPIs, field/trap/time aggregations, trend charts, and filtered insight table',
+            'ui_path': 'Home > Monitoring Analytics',
+        },
+        {
+            'name': 'Insect Model Overview',
+            'purpose': 'inspect model runtime thresholds and evaluation/observed quality metrics',
+            'ui_path': 'Home > Insect Model Overview',
+        },
+        {
+            'name': 'Exploratory Analysis',
+            'purpose': 'ask data questions for selected field and date scope, export HTML report',
+            'ui_path': 'Home > Exploratory Analysis',
+        },
+        {
+            'name': 'Account Settings',
+            'purpose': 'view profile and access scope',
+            'ui_path': 'Home > Account Settings',
+        },
+    ]
+
+    uploads_q = apply_production_upload_filter(db.query(TrapUpload))
+    if current_user.role != 'admin':
+        uploads_q = uploads_q.filter(TrapUpload.user_id == current_user.id)
+    totals = uploads_q.with_entities(
+        func.count(TrapUpload.id).label('uploads'),
+        func.coalesce(func.sum(TrapUpload.detection_count), 0).label('detections'),
+    ).one()
+
+    context_payload = {
+        'user': {'role': current_user.role},
+        'modules': module_inventory,
+        'workspace': {
+            'upload_count': int(totals.uploads or 0),
+            'detection_count': int(totals.detections or 0),
+        },
+    }
+
+    settings = get_settings()
+    used_openai = False
+    answer = ''
+    provider_error = ''
+
+    if settings.openai_api_key:
+        try:
+            used_openai = True
+            response = requests.post(
+                'https://api.openai.com/v1/responses',
+                headers={
+                    'Authorization': f'Bearer {settings.openai_api_key}',
+                    'Content-Type': 'application/json',
+                },
+                json={
+                    'model': settings.openai_chat_model,
+                    'input': [
+                        {
+                            'role': 'system',
+                            'content': (
+                                'You are a product support assistant for this insect monitoring app. '
+                                'Only answer based on provided module inventory and workspace context. '
+                                'Help users navigate where to find features, explain what each existing module does, '
+                                'and suggest operational next steps that are already supported. '
+                                'If asked for unavailable functionality, say it is not available in this version.'
+                            ),
+                        },
+                        {
+                            'role': 'user',
+                            'content': (
+                                f'Platform context JSON:\n{json.dumps(context_payload)}\n\n'
+                                f'Question:\n{question}'
+                            ),
+                        },
+                    ],
+                },
+                timeout=30,
+            )
+            response.raise_for_status()
+            payload_json = response.json()
+            answer = payload_json.get('output_text', '').strip()
+            if not answer:
+                output_blocks = payload_json.get('output', []) or []
+                chunks: list[str] = []
+                for block in output_blocks:
+                    for content in block.get('content', []) or []:
+                        text_value = content.get('text')
+                        if text_value:
+                            chunks.append(text_value)
+                answer = '\n'.join(chunks).strip()
+            if not answer:
+                answer = 'No textual output was returned by model.'
+        except Exception as exc:
+            provider_error = str(exc)
+            used_openai = False
+
+    if not used_openai:
+        answer = (
+            'Support assistant is running in local fallback mode. '
+            'Use Home to navigate modules: Create New Field, Upload Trap Images, Monitoring Analytics, '
+            'Insect Model Overview, Exploratory Analysis, and Account Settings. '
+            f"Current workspace summary: uploads={context_payload['workspace']['upload_count']}, "
+            f"detections={context_payload['workspace']['detection_count']}. "
+            'Add OPENAI_API_KEY in backend .env for richer natural language responses.'
+        )
+
+    return {
+        'answer': answer,
+        'used_openai': used_openai,
+        'provider_error': provider_error,
+        'context': context_payload,
+    }
+
+
 def _line_chart_svg(title: str, labels: list[str], values: list[float], y_label: str, stroke: str) -> str:
     if not labels or not values:
         return '<p>No data available for this chart.</p>'

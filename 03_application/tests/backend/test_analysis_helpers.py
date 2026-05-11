@@ -291,3 +291,36 @@ def test_exploratory_chat_full_fallback_and_openai(monkeypatch: pytest.MonkeyPat
     out2 = analysis_api.exploratory_chat({"question": "status"}, db=db2, current_user=DummyUser(id=1, role="admin"))
     assert out2["used_openai"] is True
     assert "Model answer" in out2["answer"]
+
+
+def test_support_chat_fallback_and_openai(monkeypatch: pytest.MonkeyPatch) -> None:
+    totals = SimpleNamespace(uploads=7, detections=31)
+    db = _FakeDB([_StaticQuery(one=totals)])
+    monkeypatch.setattr(
+        analysis_api,
+        "get_settings",
+        lambda: SimpleNamespace(openai_api_key="", openai_chat_model="gpt-4o-mini"),
+    )
+    out = analysis_api.support_chat({"question": "Where do I upload images?"}, db=db, current_user=DummyUser(id=1, role="admin"))
+    assert out["used_openai"] is False
+    assert out["context"]["workspace"]["upload_count"] == 7
+    assert "Upload Trap Images" in out["answer"]
+
+    class _Resp:
+        def raise_for_status(self):
+            return None
+
+        def json(self):
+            return {"output": [{"content": [{"text": "Use Home > Upload Trap Images."}]}], "output_text": ""}
+
+    db2 = _FakeDB([_StaticQuery(one=totals)])
+    monkeypatch.setattr(
+        analysis_api,
+        "get_settings",
+        lambda: SimpleNamespace(openai_api_key="x", openai_chat_model="gpt-4o-mini"),
+    )
+    monkeypatch.setattr(analysis_api.requests, "post", lambda *args, **kwargs: _Resp())
+    out2 = analysis_api.support_chat({"question": "How do I inspect trends?"}, db=db2, current_user=DummyUser(id=1, role="admin"))
+    assert out2["used_openai"] is True
+    assert "Upload Trap Images" in out2["context"]["modules"][1]["name"]
+    assert "Use Home > Upload Trap Images." in out2["answer"]

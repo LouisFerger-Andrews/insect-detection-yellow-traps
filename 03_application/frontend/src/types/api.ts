@@ -165,6 +165,26 @@ export type ExploratoryReportResponse = ExploratoryChatResponse & {
   html: string;
 };
 
+export type SupportChatResponse = {
+  answer: string;
+  used_openai: boolean;
+  provider_error: string;
+  context: {
+    user: {
+      role: 'admin' | 'user';
+    };
+    modules: Array<{
+      name: string;
+      purpose: string;
+      ui_path: string;
+    }>;
+    workspace: {
+      upload_count: number;
+      detection_count: number;
+    };
+  };
+};
+
 export type EnvironmentOverview = {
   selected_year?: number | null;
   available_years?: number[];
