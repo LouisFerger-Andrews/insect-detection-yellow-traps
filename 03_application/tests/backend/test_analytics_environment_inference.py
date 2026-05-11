@@ -227,6 +227,7 @@ def test_insight_dashboard_filters_kpis_results_and_predictions(
         start_date=date(2026, 5, 1),
         end_date=date(2026, 5, 2),
         min_detections=2,
+        max_detections=5,
         min_confidence=0.6,
         db=insight_db_session,
         current_user=insight_seed_data,
@@ -256,6 +257,7 @@ def test_insight_dashboard_csv_export_includes_context_and_rows(
         start_date=date(2026, 5, 1),
         end_date=date(2026, 5, 1),
         min_detections=1,
+        max_detections=5,
         min_confidence=0.7,
         db=insight_db_session,
         current_user=insight_seed_data,
@@ -264,6 +266,7 @@ def test_insight_dashboard_csv_export_includes_context_and_rows(
     text = response.body.decode("utf-8")
     assert "dataset_version,metadata-v1.0.0" in text
     assert "filter_field_id,field-a" in text
+    assert "filter_max_detections,5" in text
     assert "filter_min_confidence,0.7" in text
     assert "upload_id,image_path,field_id,field_name,trap_id,trap_code,capture_date,detection_count,confidence_avg,prediction_count,prediction_metadata" in text
     assert "North Field" in text
