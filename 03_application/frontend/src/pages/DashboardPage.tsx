@@ -1,7 +1,8 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { apiClient } from '../api/client';
 import FieldMapManager from '../components/FieldMapManager';
 import { useAuth } from '../context/AuthContext';
+import { ACCEPTED_UPLOAD_EXTENSIONS, validateUploadInput } from '../utils/uploadValidation';
 import type {
   AnalyticsOverview,
   EnvironmentOverview,
@@ -271,6 +272,18 @@ export default function DashboardPage() {
       text: 'Ask me anything about trap uploads, detections, fields, and trends in your current data scope.',
     },
   ]);
+  const selectedFiles = useMemo(() => (files ? Array.from(files) : []), [files]);
+  const uploadValidationErrors = useMemo(
+    () =>
+      validateUploadInput({
+        files: selectedFiles,
+        startDate,
+        endDate,
+        selectedTrapId: selectedTrap?.id ?? null,
+        selectedFieldId,
+      }),
+    [selectedFiles, startDate, endDate, selectedTrap, selectedFieldId]
+  );
 
   const fmt = (value: number | null | undefined, digits: number = 1) => {
     if (value === null || value === undefined || Number.isNaN(value)) return '-';
@@ -445,8 +458,12 @@ export default function DashboardPage() {
 
   const uploadBatch = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (!token || !files || files.length === 0) {
-      setError('Select at least one image');
+    if (!token) {
+      setError('You must be signed in to upload images.');
+      return;
+    }
+    if (uploadValidationErrors.length > 0) {
+      setError(uploadValidationErrors[0]);
       return;
     }
     if (!selectedTrap || !selectedFieldId) {
@@ -464,7 +481,7 @@ export default function DashboardPage() {
       formData.set('field_id', selectedFieldId);
       formData.set('trap_id', selectedTrap.id);
       formData.set('trap_code', selectedTrap.name);
-      Array.from(files).forEach((file) => formData.append('images', file));
+      selectedFiles.forEach((file) => formData.append('images', file));
 
       const response = await apiClient.postForm<UploadBatchResponse>('/api/analysis/upload-range', formData, token);
       setLastBatch(response);
@@ -532,9 +549,22 @@ export default function DashboardPage() {
             </label>
             <label>
               Images
-              <input type="file" accept="image/*" multiple onChange={(e) => setFiles(e.target.files)} required />
+              <input
+                type="file"
+                accept={ACCEPTED_UPLOAD_EXTENSIONS.join(',')}
+                multiple
+                onChange={(e) => setFiles(e.target.files)}
+                required
+              />
             </label>
-            <button type="submit" disabled={busy}>
+            {uploadValidationErrors.length > 0 ? (
+              <div className="error validation-list" role="alert">
+                {uploadValidationErrors.map((message) => (
+                  <p key={message}>{message}</p>
+                ))}
+              </div>
+            ) : null}
+            <button type="submit" disabled={busy || uploadValidationErrors.length > 0}>
               {busy ? 'Processing...' : 'Upload + Run Model'}
             </button>
           </form>

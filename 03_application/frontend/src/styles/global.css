@@ -111,6 +111,17 @@ button {
   background: #ffe3e3;
 }
 
+.validation-list {
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+  border-radius: 8px;
+}
+
+.validation-list p {
+  margin: 0;
+}
+
 .map-wrap {
   position: relative;
   margin-top: 12px;
