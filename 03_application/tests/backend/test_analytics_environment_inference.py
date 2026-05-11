@@ -7,9 +7,13 @@ from types import SimpleNamespace
 
 import pytest
 from fastapi import HTTPException
+from sqlalchemy import create_engine
+from sqlalchemy.orm import Session
 
 from app.api import analytics as analytics_api
 from app.api import environment as environment_api
+from app.db.base import Base
+from app.models import Detection, FieldMap, TrapUpload, User
 from app.services.inference_service import InferenceService
 
 
@@ -77,6 +81,98 @@ class FakeDB:
         return self._queries.pop(0)
 
 
+@pytest.fixture()
+def insight_db_session(tmp_path: Path) -> Session:
+    engine = create_engine(f"sqlite:///{tmp_path / 'insights.db'}")
+    Base.metadata.create_all(bind=engine)
+    with Session(engine) as db:
+        yield db
+    Base.metadata.drop_all(bind=engine)
+
+
+@pytest.fixture()
+def insight_seed_data(insight_db_session: Session) -> User:
+    user = User(
+        id=77,
+        email="insights@example.test",
+        full_name="Insight User",
+        password_hash="not-used",
+        role="user",
+        is_active=True,
+    )
+    other_user = User(
+        id=88,
+        email="other-insights@example.test",
+        full_name="Other User",
+        password_hash="not-used",
+        role="user",
+        is_active=True,
+    )
+    field_a = FieldMap(
+        id="field-a",
+        owner_user_id=user.id,
+        name="North Field",
+        polygon_geojson="{}",
+        area_m2=100.0,
+    )
+    field_b = FieldMap(
+        id="field-b",
+        owner_user_id=user.id,
+        name="South Field",
+        polygon_geojson="{}",
+        area_m2=120.0,
+    )
+    hidden_field = FieldMap(
+        id="hidden-field",
+        owner_user_id=other_user.id,
+        name="Hidden Field",
+        polygon_geojson="{}",
+        area_m2=80.0,
+    )
+    upload_a = TrapUpload(
+        user_id=user.id,
+        field_id=field_a.id,
+        trap_id="trap-a",
+        trap_code="T-A",
+        capture_date=date(2026, 5, 1),
+        image_path="storage/uploads/field-a/2026/05/01/T-A/a.jpg",
+        detection_count=5,
+        confidence_avg=0.82,
+    )
+    upload_b = TrapUpload(
+        user_id=user.id,
+        field_id=field_b.id,
+        trap_id="trap-b",
+        trap_code="T-B",
+        capture_date=date(2026, 5, 2),
+        image_path="storage/uploads/field-b/2026/05/02/T-B/b.jpg",
+        detection_count=2,
+        confidence_avg=0.61,
+    )
+    hidden_upload = TrapUpload(
+        user_id=other_user.id,
+        field_id=hidden_field.id,
+        trap_id="trap-hidden",
+        trap_code="T-H",
+        capture_date=date(2026, 5, 3),
+        image_path="storage/uploads/hidden-field/2026/05/03/T-H/h.jpg",
+        detection_count=99,
+        confidence_avg=0.95,
+    )
+    insight_db_session.add_all([user, other_user, field_a, field_b, hidden_field, upload_a, upload_b, hidden_upload])
+    insight_db_session.flush()
+    insight_db_session.add_all(
+        [
+            Detection(upload_id=upload_a.id, class_id=0, confidence=0.9, x1=1, y1=2, x2=3, y2=4),
+            Detection(upload_id=upload_a.id, class_id=1, confidence=0.74, x1=5, y1=6, x2=7, y2=8),
+            Detection(upload_id=upload_b.id, class_id=0, confidence=0.61, x1=10, y1=11, x2=12, y2=13),
+            Detection(upload_id=hidden_upload.id, class_id=2, confidence=0.95, x1=20, y1=21, x2=22, y2=23),
+        ]
+    )
+    insight_db_session.commit()
+    return user
+
+
 def test_analytics_overview_happy_path_admin() -> None:
     uploads_rows = [
         (SimpleNamespace(id=1, detection_count=5), SimpleNamespace(id="field-1", name="Field 1")),
@@ -119,6 +215,662 @@ def test_analytics_overview_field_not_found() -> None:
             current_user=DummyUser(id=2, role="user"),
         )
     assert exc.value.status_code == 404
+
+
+def test_insight_dashboard_filters_kpis_results_and_predictions(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 2),
+        min_detections=2,
+        max_detections=5,
+        min_confidence=0.6,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    assert out["context"]["scope"] == "owned-fields"
+    assert out["context"]["dataset_version"] == "metadata-v1.0.0"
+    assert out["kpis"]["processed_images"] == 2
+    assert out["kpis"]["total_detections"] == 7
+    assert out["kpis"]["avg_detections_per_image"] == 3.5
+    assert out["kpis"]["highest_activity_field"]["field_name"] == "North Field"
+    assert out["kpis"]["highest_activity_trap"]["trap_code"] == "T-A"
+    assert [row["capture_date"] for row in out["trend"]] == ["2026-05-01", "2026-05-02"]
+    assert {row["field_id"] for row in out["comparisons"]["by_field"]} == {"field-a", "field-b"}
+    assert [row["upload_id"] for row in out["results"]] == [2, 1]
+    assert out["results"][1]["detections"][0]["bbox_xyxy"] == [1.0, 2.0, 3.0, 4.0]
+    assert all(result["field_id"] != "hidden-field" for result in out["results"])
+
+
+def test_insight_dashboard_csv_export_includes_context_and_rows(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    response = analytics_api.export_insight_dashboard_csv(
+        field_id="field-a",
+        trap_code="T-A",
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 1),
+        min_detections=1,
+        max_detections=5,
+        min_confidence=0.7,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    text = response.body.decode("utf-8")
+    assert "dataset_version,metadata-v1.0.0" in text
+    assert "filter_field_id,field-a" in text
+    assert "filter_max_detections,5" in text
+    assert "filter_min_confidence,0.7" in text
+    assert "upload_id,image_path,field_id,field_name,trap_id,trap_code,capture_date,detection_count,confidence_avg,prediction_count,prediction_metadata" in text
+    assert "North Field" in text
+    assert "class=0 conf=0.9000" in text
+
+
+# Feature #119 Acceptance Criteria Tests: Aggregated Monitoring Views
+
+def test_119_aggregated_results_across_multiple_images(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Users can view aggregated detection results across multiple sticky trap images."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Should have results from both owned uploads
+    assert len(out["results"]) == 2
+    # Should aggregate detections: 5 + 2 = 7
+    assert out["kpis"]["total_detections"] == 7
+    # Should count both images
+    assert out["kpis"]["processed_images"] == 2
+
+
+def test_119_detection_counts_summarized_over_time(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Detection counts can be summarized over time."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Trend should have daily aggregation
+    assert "trend" in out
+    trend_dates = [row["capture_date"] for row in out["trend"]]
+    assert "2026-05-01" in trend_dates
+    assert "2026-05-02" in trend_dates
+
+    # Each trend entry should have detection counts
+    for trend_row in out["trend"]:
+        assert "images" in trend_row
+        assert "detections" in trend_row
+        assert "avg_detections_per_image" in trend_row
+
+
+def test_119_detection_counts_grouped_by_trap(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Detection counts can be grouped by trap where trap metadata is available."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Should have by_trap comparison
+    assert "by_trap" in out["comparisons"]
+    trap_codes = [row["trap_code"] for row in out["comparisons"]["by_trap"]]
+    assert "T-A" in trap_codes
+    assert "T-B" in trap_codes
+
+    # Each trap should have aggregated metrics
+    for trap_row in out["comparisons"]["by_trap"]:
+        assert "trap_code" in trap_row
+        assert "images" in trap_row
+        assert "detections" in trap_row
+
+
+def test_119_detection_counts_grouped_by_field(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Detection counts can be grouped by field or location where field metadata is available."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Should have by_field comparison
+    assert "by_field" in out["comparisons"]
+    field_ids = [row["field_id"] for row in out["comparisons"]["by_field"]]
+    assert "field-a" in field_ids
+    assert "field-b" in field_ids
+
+    # Each field should have aggregated metrics
+    for field_row in out["comparisons"]["by_field"]:
+        assert "field_id" in field_row
+        assert "field_name" in field_row
+        assert "images" in field_row
+        assert "detections" in field_row
+
+
+def test_119_dashboard_shows_kpis(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """The dashboard shows basic KPIs for the selected data."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    kpis = out["kpis"]
+    # Should have all required KPIs
+    assert "processed_images" in kpis
+    assert "total_detections" in kpis
+    assert "avg_detections_per_image" in kpis
+    assert "highest_activity_field" in kpis
+    assert "highest_activity_trap" in kpis
+
+    # KPI values should make sense
+    assert kpis["processed_images"] == 2
+    assert kpis["total_detections"] == 7
+    assert kpis["avg_detections_per_image"] == 3.5
+    assert kpis["highest_activity_field"]["field_name"] == "North Field"
+
+
+def test_119_time_based_trend_visualization(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """At least one time based trend visualization is available."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Trend array is the time-based visualization data
+    assert "trend" in out
+    assert len(out["trend"]) > 0
+
+    # Trending data should be time-ordered
+    trend_dates = [row["capture_date"] for row in out["trend"]]
+    assert trend_dates == sorted(trend_dates)
+
+
+def test_119_aggregation_logic_documented() -> None:
+    """The aggregation logic is documented."""
+    import os
+    doc_path = "03_application/docs/AGGREGATION_LOGIC.md"
+    assert os.path.exists(doc_path), "Aggregation documentation should exist"
+
+    with open(doc_path) as f:
+        content = f.read()
+        # Check for key documentation sections
+        assert "Time-Based Aggregation" in content
+        assert "Spatial Aggregation" in content
+        assert "KPI Definitions" in content
+
+
+def test_119_missing_metadata_handled(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Missing or incomplete metadata is handled without breaking the view."""
+    unassigned_upload = TrapUpload(
+        user_id=insight_seed_data.id,
+        field_id="field-a",
+        trap_id=None,
+        trap_code="FIELD_BATCH",
+        capture_date=date(2026, 5, 4),
+        image_path="storage/uploads/field-a/2026/05/04/FIELD_BATCH/unassigned.jpg",
+        detection_count=0,
+        confidence_avg=0.0,
+    )
+    insight_db_session.add(unassigned_upload)
+    insight_db_session.commit()
+
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # View should still show results
+    assert any(result["trap_id"] is None for result in out["results"])
+    assert any(result["trap_code"] == "FIELD_BATCH" for result in out["results"])
+    # Aggregations should still work
+    assert out["kpis"]["processed_images"] == 3
+
+
+def test_119_results_traceable_to_images(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Aggregated results remain traceable to the underlying image level detections where possible."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Should have detailed results array
+    assert "results" in out
+    assert len(out["results"]) > 0
+
+    # Each result should have full image details
+    for result in out["results"]:
+        assert "upload_id" in result
+        assert "image_path" in result
+        assert "capture_date" in result
+        assert "detection_count" in result
+        assert "detections" in result  # Drill-down to individual detections
+
+
+# Feature #120 Acceptance Criteria Tests: Filtering and Querying
+
+def test_120_filter_by_field(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Users can filter monitoring results by field or location."""
+    out = analytics_api.insight_dashboard(
+        field_id="field-a",
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Should only have results from field-a
+    assert all(result["field_id"] == "field-a" for result in out["results"])
+    # Should only have field-a in comparisons
+    assert all(row["field_id"] == "field-a" for row in out["comparisons"]["by_field"])
+
+
+def test_120_filter_by_trap(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Trap based filtering is available where trap IDs exist."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code="T-A",
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Should only have results from trap T-A
+    assert all(result["trap_code"] == "T-A" for result in out["results"])
+
+
+def test_120_filter_by_trap_id(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Trap ID filtering is available where stored trap identifiers exist."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_id="trap-a",
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    assert [result["trap_id"] for result in out["results"]] == ["trap-a"]
+    assert out["context"]["filters"]["trap_id"] == "trap-a"
+
+
+def test_120_filter_by_date_range(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Date or time period filtering is available where timestamps exist."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 1),
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Should only have results from May 1st
+    assert all(result["capture_date"] == "2026-05-01" for result in out["results"])
+
+
+def test_120_filter_by_detection_count_range(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Detection count based filtering is available."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=2,
+        max_detections=5,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Should only have results with 2-5 detections
+    for result in out["results"]:
+        assert 2 <= result["detection_count"] <= 5
+
+
+def test_120_filter_by_zero_detection_count(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Detection count filtering supports zero-detection images for manual review."""
+    zero_upload = TrapUpload(
+        user_id=insight_seed_data.id,
+        field_id="field-a",
+        trap_id="trap-zero",
+        trap_code="T-ZERO",
+        capture_date=date(2026, 5, 5),
+        image_path="storage/uploads/field-a/2026/05/05/T-ZERO/zero.jpg",
+        detection_count=0,
+        confidence_avg=0.0,
+    )
+    insight_db_session.add(zero_upload)
+    insight_db_session.commit()
+
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=0,
+        max_detections=0,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    assert [result["trap_code"] for result in out["results"]] == ["T-ZERO"]
+    assert out["kpis"]["processed_images"] == 1
+    assert out["kpis"]["total_detections"] == 0
+
+
+def test_120_filter_by_confidence(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Confidence based filtering is available where confidence scores exist."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=0.75,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Should only have results with confidence >= 0.75
+    for result in out["results"]:
+        assert result["confidence_avg"] >= 0.75
+
+
+def test_120_filter_validation_date_range(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Filter validation: start_date must be <= end_date."""
+    with pytest.raises(HTTPException) as exc:
+        analytics_api.insight_dashboard(
+            field_id=None,
+            trap_code=None,
+            start_date=date(2026, 5, 3),
+            end_date=date(2026, 5, 1),
+            min_detections=None,
+            max_detections=None,
+            min_confidence=None,
+            db=insight_db_session,
+            current_user=insight_seed_data,
+        )
+    assert exc.value.status_code == 400
+
+
+def test_120_filter_validation_detection_range(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Filter validation: min_detections must be <= max_detections."""
+    with pytest.raises(HTTPException) as exc:
+        analytics_api.insight_dashboard(
+            field_id=None,
+            trap_code=None,
+            start_date=None,
+            end_date=None,
+            min_detections=10,
+            max_detections=5,
+            min_confidence=None,
+            db=insight_db_session,
+            current_user=insight_seed_data,
+        )
+    assert exc.value.status_code == 400
+
+
+def test_120_charts_and_tables_update_with_filters(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Charts and tables update correctly after filters are applied."""
+    # Get unfiltered baseline
+    baseline = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Apply field filter
+    filtered = analytics_api.insight_dashboard(
+        field_id="field-a",
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Filtered results should differ from baseline
+    assert len(filtered["results"]) < len(baseline["results"])
+    assert filtered["kpis"]["total_detections"] < baseline["kpis"]["total_detections"]
+
+
+def test_120_inspect_image_level_results(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Users can inspect image level results from the filtered output."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Should have detailed results with detection-level info
+    for result in out["results"]:
+        assert "upload_id" in result
+        assert "detections" in result
+        # Each detection should have class and confidence
+        for detection in result["detections"]:
+            assert "class_id" in detection
+            assert "confidence" in detection
+            assert "bbox_xyxy" in detection
+
+
+def test_120_handle_no_matching_results(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """The system clearly handles cases where no data matches the filters."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=date(2026, 6, 1),  # Future date with no data
+        end_date=date(2026, 6, 30),
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Should return empty but valid response
+    assert out["results"] == []
+    assert out["kpis"]["processed_images"] == 0
+    assert out["kpis"]["total_detections"] == 0
+
+
+def test_120_filtering_does_not_alter_data(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Filtering does not overwrite or alter original detection result data."""
+    # Filter the data
+    analytics_api.insight_dashboard(
+        field_id="field-a",
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Query database directly - data should be unchanged
+    upload = insight_db_session.query(TrapUpload).filter_by(id=1).first()
+    assert upload is not None
+    assert upload.detection_count == 5
+    assert upload.field_id == "field-a"
+
+
+def test_120_access_control_non_admin_sees_owned_fields(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Non-admin users only see fields they own."""
+    # insight_seed_data is a non-admin user
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    # Should not see hidden-field which is owned by other_user
+    assert all(result["field_id"] != "hidden-field" for result in out["results"])
+
 
 
 def test_environment_get_field_or_403_and_sync(monkeypatch: pytest.MonkeyPatch) -> None:

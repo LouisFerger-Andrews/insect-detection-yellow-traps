@@ -54,6 +54,18 @@ describe('apiClient', () => {
     expect(headers.get('Content-Type')).toBeNull();
   });
 
+  it('downloads text responses with auth headers', async () => {
+    const fetchMock = vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('a,b\n1,2\n', { status: 200 }));
+
+    const out = await apiClient.getText('/export.csv', 'token-csv');
+
+    expect(out).toContain('a,b');
+    const [, init] = fetchMock.mock.calls[0];
+    const headers = new Headers(init?.headers);
+    expect(headers.get('Authorization')).toBe('Bearer token-csv');
+    expect(headers.get('Content-Type')).toBeNull();
+  });
+
   it('throws api message for non-ok response', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('bad request', { status: 400 }));
     await expect(apiClient.get('/bad')).rejects.toThrow('bad request');

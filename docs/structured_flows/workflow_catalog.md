@@ -49,8 +49,8 @@ This document lists the major operational workflows in the insect identification
 ## WF-06 Analytics and Reporting
 
 - Scope: upload/detection aggregations, trend metrics, exploratory chat context.
-- Detailed doc: `analytics_flow.md`.
-- Related issue cluster: `#6` epic direction + analytics APIs.
+- Detailed docs: `analytics_flow.md`, `insight_dashboard_reporting_flow.md`.
+- Related issue cluster: `#6` epic direction + analytics APIs, `#121`.
 
 ## WF-07 Environmental Data Sync
 

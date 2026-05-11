@@ -4,6 +4,7 @@ import DashboardPage from '../DashboardPage';
 const getMock = vi.fn();
 const postMock = vi.fn();
 const postFormMock = vi.fn();
+const getTextMock = vi.fn();
 const logoutMock = vi.fn();
 
 vi.mock('../../api/client', () => ({
@@ -11,6 +12,7 @@ vi.mock('../../api/client', () => ({
     get: (...args: unknown[]) => getMock(...args),
     post: (...args: unknown[]) => postMock(...args),
     postForm: (...args: unknown[]) => postFormMock(...args),
+    getText: (...args: unknown[]) => getTextMock(...args),
   },
 }));
 
@@ -57,6 +59,77 @@ function setupGetMocks() {
         daily: [{ capture_date: '2026-01-01', uploads: 2, detections: 8 }],
         by_field: [{ field_id: 'field-1', field_name: 'Field A', uploads: 10, detections: 42 }],
         by_trap: [{ trap_code: 'R01-P01', uploads: 5, detections: 20 }],
+      });
+    }
+    if (path.startsWith('/api/analytics/insights')) {
+      return Promise.resolve({
+        context: {
+          scope: 'all-fields',
+          dataset_version: 'metadata-v1.0.0',
+          model_version: 'model.pt',
+          filters: {
+            field_id: 'field-1',
+            trap_id: null,
+            trap_code: null,
+            start_date: null,
+            end_date: null,
+            min_detections: null,
+            max_detections: null,
+            min_confidence: null,
+          },
+        },
+        kpis: {
+          processed_images: 2,
+          total_detections: 8,
+          avg_detections_per_image: 4,
+          highest_activity_field: {
+            field_id: 'field-1',
+            field_name: 'Field A',
+            images: 2,
+            detections: 8,
+            avg_detections_per_image: 4,
+          },
+          highest_activity_trap: {
+            trap_code: 'T1',
+            images: 2,
+            detections: 8,
+            avg_detections_per_image: 4,
+          },
+        },
+        trend: [{ capture_date: '2026-01-01', images: 2, detections: 8, avg_detections_per_image: 4 }],
+        comparisons: {
+          by_field: [{ field_id: 'field-1', field_name: 'Field A', images: 2, detections: 8, avg_detections_per_image: 4 }],
+          by_trap: [{ trap_code: 'T1', images: 2, detections: 8, avg_detections_per_image: 4 }],
+        },
+        results: [
+          {
+            upload_id: 1,
+            image_path: 'storage/uploads/field-1/2026/01/01/T1/image-a.jpg',
+            field_id: 'field-1',
+            field_name: 'Field A',
+            trap_id: 'trap-1',
+            trap_code: 'T1',
+            capture_date: '2026-01-01',
+            detection_count: 8,
+            confidence_avg: 0.81,
+            detections: [{ class_id: 0, confidence: 0.81, bbox_xyxy: [1, 2, 3, 4] }],
+          },
+        ],
+      });
+    }
+    if (path === '/api/analysis/uploads/1') {
+      return Promise.resolve({
+        id: 1,
+        user_id: 1,
+        field_id: 'field-1',
+        trap_id: 'trap-1',
+        trap_code: 'T1',
+        capture_date: '2026-01-01',
+        image_path: 'storage/uploads/field-1/2026/01/01/T1/image-a.jpg',
+        detection_count: 8,
+        confidence_avg: 0.81,
+        created_at: '2026-01-01T00:00:00',
+        detections: [{ class_id: 0, confidence: 0.81, bbox_xyxy: [1, 2, 3, 4] }],
       });
     }
     if (path.startsWith('/api/environment/overview')) {
@@ -129,7 +202,12 @@ describe('DashboardPage', () => {
     getMock.mockReset();
     postMock.mockReset();
     postFormMock.mockReset();
+    getTextMock.mockReset();
+    Object.defineProperty(URL, 'createObjectURL', { configurable: true, value: vi.fn(() => 'blob:insights') });
+    Object.defineProperty(URL, 'revokeObjectURL', { configurable: true, value: vi.fn() });
+    vi.spyOn(HTMLAnchorElement.prototype, 'click').mockImplementation(() => undefined);
     setupGetMocks();
+    getTextMock.mockResolvedValue('report,Insight dashboard export\n');
     postMock.mockResolvedValue({
       answer: 'ok',
       used_openai: false,
@@ -197,6 +275,35 @@ describe('DashboardPage', () => {
         'token-1'
       )
     );
+  });
+
+  it('renders insight dashboard filters, inspection, and export', async () => {
+    render(<DashboardPage />);
+    fireEvent.click(screen.getByRole('button', { name: /Monitoring Analytics/i }));
+
+    await waitFor(() => expect(screen.getByText('Insight Dashboard')).toBeInTheDocument());
+    expect(screen.getByText('Processed Images')).toBeInTheDocument();
+    expect(screen.getByText('Total Detections')).toBeInTheDocument();
+    expect(screen.getByText('image-a.jpg')).toBeInTheDocument();
+
+    fireEvent.change(screen.getByLabelText('Insight trap ID filter'), { target: { value: 'trap-1' } });
+    fireEvent.change(screen.getByLabelText('Insight trap code filter'), { target: { value: 'T1' } });
+    fireEvent.change(screen.getByLabelText('Minimum detections filter'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('Maximum detections filter'), { target: { value: '10' } });
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Apply Filters' })).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Apply Filters' }));
+    await waitFor(() => {
+      expect(getMock).toHaveBeenCalledWith(expect.stringContaining('/api/analytics/insights?'), 'token-1');
+      expect(getMock).toHaveBeenCalledWith(expect.stringContaining('trap_id=trap-1'), 'token-1');
+      expect(getMock).toHaveBeenCalledWith(expect.stringContaining('max_detections=10'), 'token-1');
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Open' }));
+    await waitFor(() => expect(screen.getByText('Image Result #1')).toBeInTheDocument());
+    expect(screen.getByText(/class=0, confidence=0.810/)).toBeInTheDocument();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Export CSV' }));
+    await waitFor(() => expect(getTextMock).toHaveBeenCalledWith(expect.stringContaining('/api/analytics/insights/export.csv?'), 'token-1'));
   });
 
   it('validates upload requirements and then uploads successfully', async () => {

@@ -217,3 +217,72 @@ export type FieldTimeseries = {
     total_population: number;
   }>;
 };
+
+export type InsightDashboard = {
+  context: {
+    scope: 'all-fields' | 'owned-fields';
+    dataset_version: string;
+    model_version: string;
+    filters: {
+      field_id?: string | null;
+      trap_id?: string | null;
+      trap_code?: string | null;
+      start_date?: string | null;
+      end_date?: string | null;
+      min_detections?: number | null;
+      max_detections?: number | null;
+      min_confidence?: number | null;
+    };
+  };
+  kpis: {
+    processed_images: number;
+    total_detections: number;
+    avg_detections_per_image: number;
+    highest_activity_field: null | {
+      field_id: string;
+      field_name: string;
+      images: number;
+      detections: number;
+      avg_detections_per_image: number;
+    };
+    highest_activity_trap: null | {
+      trap_code: string;
+      images: number;
+      detections: number;
+      avg_detections_per_image: number;
+    };
+  };
+  trend: Array<{
+    capture_date: string;
+    images: number;
+    detections: number;
+    avg_detections_per_image: number;
+  }>;
+  comparisons: {
+    by_field: Array<{
+      field_id: string;
+      field_name: string;
+      images: number;
+      detections: number;
+      avg_detections_per_image: number;
+    }>;
+    by_trap: Array<{
+      trap_code: string;
+      images: number;
+      detections: number;
+      avg_detections_per_image: number;
+    }>;
+  };
+  results: Array<{
+    upload_id: number;
+    image_path: string;
+    field_id: string;
+    field_name: string;
+    trap_id?: string | null;
+    trap_code: string;
+    capture_date: string;
+    detection_count: number;
+    confidence_avg: number;
+    detections: Detection[];
+  }>;
+};
