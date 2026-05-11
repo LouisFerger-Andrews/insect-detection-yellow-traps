@@ -33,6 +33,7 @@ Ingest trap images and metadata into persistent storage and graph/database links
 - `detections`: one row per predicted object with class, confidence, and `bbox_xyxy` coordinates.
 - Graph upload link: field/timeline relationship for monitoring views.
 - Image files: stored under the hierarchy documented in `storage_organization_flow.md`.
+- Prediction result retrieval: documented in `prediction_result_storage_flow.md`.
 
 ## Automated coverage
 - `03_application/tests/backend/test_ingestion_pipeline_workflow.py::test_upload_range_runs_ingestion_end_to_end`

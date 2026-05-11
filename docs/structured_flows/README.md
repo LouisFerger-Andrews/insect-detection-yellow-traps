@@ -10,6 +10,7 @@ This folder documents end-to-end operational flows for the insect identification
 - `metadata_lifecycle_flow.md`: metadata definition-to-audit lifecycle
 - `storage_organization_flow.md`: upload storage hierarchy, naming, traceability
 - `inference_flow.md`: model loading and prediction path
+- `prediction_result_storage_flow.md`: prediction result persistence and retrieval
 - `analytics_flow.md`: aggregation and reporting path
 
 ## Documentation standard

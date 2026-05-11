@@ -85,6 +85,10 @@ export type UploadSummary = {
   created_at: string;
 };
 
+export type UploadDetail = UploadSummary & {
+  detections: Detection[];
+};
+
 export type AnalyticsOverview = {
   scope: 'all-fields' | 'owned-fields';
   selected_field_id?: string | null;

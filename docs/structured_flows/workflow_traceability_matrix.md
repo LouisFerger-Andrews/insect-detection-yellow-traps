@@ -11,6 +11,7 @@ Coverage status scale:
 | Issue | Title | State | Coverage | Primary doc |
 |---|---|---|---|---|
 | #21 | [Feature][MVP] Metadata Management | Open | Partial | `workflow_catalog.md` (WF-04) |
+| #28 | [Feature][MVP] Prediction Result Storage | Open | Done | `prediction_result_storage_flow.md` |
 | #35 | [Feature][MVP] Data Ingestion Pipeline | Open | Partial | `upload_ingestion_flow.md` |
 | #42 | [Feature][MVP] Data Validation and Error Handling | Open | Partial | `upload_ingestion_flow.md`, `inference_flow.md` |
 | #43 | [Feature][MVP] Storage Structure and Organization | Open | Done | `storage_organization_flow.md` |
@@ -39,6 +40,16 @@ Coverage status scale:
 | #68 | Implement structured input interface for image and metadata upload | Closed | Done | Upload UI collects field/trap mode, date range, and image files; exact-trap and field-level paths covered by frontend tests. |
 | #69 | Enforce validation and required fields in upload workflow | Closed | Done | Frontend and backend enforce required metadata, image constraints, trap consistency, and date rules before persistence. |
 | #70 | Test and document structured upload workflow | Open | Done | Exact-trap structured metadata, field-level batch metadata, frontend submission shape, and validation failures covered in tests and workflow docs. |
+
+## Prediction result task chain
+
+| Issue | Title | State | Coverage | Notes |
+|---|---|---|---|---|
+| #29 | Define prediction result schema and structure | Open | Done | `trap_uploads` summary and `detections` row structure documented in `prediction_result_storage_flow.md`. |
+| #30 | Implement backend storage for prediction results | Open | Done | Backend stores detection rows with `upload_id`, `class_id`, `confidence`, and `bbox_xyxy` coordinates split into columns. |
+| #31 | Integrate prediction storage into inference pipeline | Open | Done | Upload ingestion runs inference and stores upload summary plus detections in one SQL transaction. |
+| #32 | Implement retrieval of prediction results with images and metadata | Open | Done | `GET /api/analysis/uploads/{upload_id}` returns image metadata with stored detections and ownership checks. |
+| #33 | Test and document prediction result storage workflow | Open | Done | Ingestion and retrieval tests cover prediction storage, linkage, retrieval, and access control. |
 
 ## Storage organization task chain
 

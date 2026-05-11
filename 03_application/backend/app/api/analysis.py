@@ -15,7 +15,7 @@ from app.api.deps import get_current_user
 from app.core.config import get_settings
 from app.db.session import get_db
 from app.models import Detection, FieldMap, TrapPoint, TrapUpload, User
-from app.schemas.upload import DetectionResponse, UploadBatchResponse, UploadResult, UploadSummary
+from app.schemas.upload import DetectionResponse, UploadBatchResponse, UploadDetail, UploadResult, UploadSummary
 from app.services.graph_service import GraphService
 from app.services.environment_service import infer_sync_start_date, sync_environment_for_field
 from app.services.inference_service import InferenceService
@@ -239,6 +239,45 @@ def list_my_uploads(
     if current_user.role != 'admin':
         query = query.filter(TrapUpload.user_id == current_user.id)
     return query.order_by(TrapUpload.created_at.desc()).limit(200).all()
+
+
+@router.get('/uploads/{upload_id}', response_model=UploadDetail)
+def get_upload_prediction_result(
+    upload_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    upload = db.query(TrapUpload).filter(TrapUpload.id == upload_id).first()
+    if upload is None or (current_user.role != 'admin' and upload.user_id != current_user.id):
+        raise HTTPException(status_code=404, detail='Upload not found')
+
+    detections = (
+        db.query(Detection)
+        .filter(Detection.upload_id == upload.id)
+        .order_by(Detection.id.asc())
+        .all()
+    )
+
+    return UploadDetail(
+        id=upload.id,
+        user_id=upload.user_id,
+        field_id=upload.field_id,
+        trap_id=upload.trap_id,
+        trap_code=upload.trap_code,
+        capture_date=upload.capture_date,
+        image_path=upload.image_path,
+        detection_count=upload.detection_count,
+        confidence_avg=upload.confidence_avg,
+        created_at=upload.created_at,
+        detections=[
+            DetectionResponse(
+                class_id=detection.class_id,
+                confidence=detection.confidence,
+                bbox_xyxy=[detection.x1, detection.y1, detection.x2, detection.y2],
+            )
+            for detection in detections
+        ],
+    )
 
 
 @router.get('/model-stats')

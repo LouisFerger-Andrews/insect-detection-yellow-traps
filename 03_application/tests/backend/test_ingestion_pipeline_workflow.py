@@ -188,6 +188,93 @@ def test_upload_range_persists_structured_exact_trap_metadata(
     assert graph_calls == [(field.id, upload.id, date(2026, 5, 1), 1)]
 
 
+def test_get_upload_prediction_result_returns_image_metadata_and_detections(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    db_session: Session,
+    ingestion_user_and_field: tuple[User, FieldMap],
+) -> None:
+    user, field = ingestion_user_and_field
+    upload_dir = tmp_path / "uploads"
+
+    class FakeInferenceService:
+        def run(self, image_path: Path):  # noqa: ANN201
+            assert image_path.exists()
+            return [
+                {"bbox_xyxy": [1.0, 2.0, 3.0, 4.0], "confidence": 0.8, "class_id": 0},
+                {"bbox_xyxy": [5.0, 6.0, 7.0, 8.0], "confidence": 0.6, "class_id": 2},
+            ]
+
+    class FakeGraphService:
+        def link_upload_to_field(self, *args, **kwargs):  # noqa: ANN002, ANN003
+            return None
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(analysis_api, "get_settings", lambda: SimpleNamespace(upload_dir=str(upload_dir)))
+    monkeypatch.setattr(analysis_api, "InferenceService", FakeInferenceService)
+    monkeypatch.setattr(analysis_api, "GraphService", FakeGraphService)
+    monkeypatch.setattr(analysis_api, "infer_sync_start_date", lambda db, field_id: None)
+
+    upload_response = analysis_api.upload_range(
+        start_date=date(2026, 5, 2),
+        end_date=date(2026, 5, 2),
+        field_id=field.id,
+        trap_id=None,
+        trap_code="FIELD_BATCH",
+        images=[_upload("prediction-detail.jpg")],
+        db=db_session,
+        current_user=user,
+    )
+
+    detail = analysis_api.get_upload_prediction_result(
+        upload_response.results[0].upload_id,
+        db=db_session,
+        current_user=user,
+    )
+
+    assert detail.id == upload_response.results[0].upload_id
+    assert detail.field_id == field.id
+    assert detail.trap_id is None
+    assert detail.trap_code == "FIELD_BATCH"
+    assert detail.capture_date == date(2026, 5, 2)
+    assert detail.image_path.endswith("_prediction-detail.jpg")
+    assert detail.detection_count == 2
+    assert round(detail.confidence_avg, 2) == 0.70
+    assert [d.class_id for d in detail.detections] == [0, 2]
+    assert [d.confidence for d in detail.detections] == [0.8, 0.6]
+    assert [d.bbox_xyxy for d in detail.detections] == [[1.0, 2.0, 3.0, 4.0], [5.0, 6.0, 7.0, 8.0]]
+
+
+def test_get_upload_prediction_result_enforces_upload_ownership(
+    db_session: Session,
+    ingestion_user_and_field: tuple[User, FieldMap],
+) -> None:
+    owner, field = ingestion_user_and_field
+    upload = TrapUpload(
+        user_id=owner.id,
+        field_id=field.id,
+        trap_id=None,
+        trap_code="FIELD_BATCH",
+        capture_date=date(2026, 5, 2),
+        image_path="storage/uploads/field/2026/05/02/FIELD_BATCH/example.jpg",
+        detection_count=0,
+        confidence_avg=0.0,
+    )
+    db_session.add(upload)
+    db_session.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        analysis_api.get_upload_prediction_result(
+            upload.id,
+            db=db_session,
+            current_user=User(id=202, email="other@example.test", full_name="Other", password_hash="not-used", role="user"),
+        )
+
+    assert exc.value.status_code == 404
+
+
 def test_upload_range_rejects_invalid_batch_before_storage(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

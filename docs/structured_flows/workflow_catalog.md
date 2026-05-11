@@ -40,6 +40,12 @@ This document lists the major operational workflows in the insect identification
 - Detailed doc: `inference_flow.md`.
 - Related issue cluster: `#35`, `#39`, `#42`.
 
+## WF-05A Prediction Result Storage
+
+- Scope: detection row schema, upload linkage, stored prediction retrieval.
+- Detailed doc: `prediction_result_storage_flow.md`.
+- Related issue cluster: `#28`, `#29`-`#33`.
+
 ## WF-06 Analytics and Reporting
 
 - Scope: upload/detection aggregations, trend metrics, exploratory chat context.
