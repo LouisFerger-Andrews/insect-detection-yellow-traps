@@ -46,7 +46,13 @@ def ingestion_user_and_field(db_session: Session) -> tuple[User, FieldMap]:
     return user, field
 
 
-def _upload(filename: str, content: bytes = b"fake-image-bytes") -> UploadFile:
+JPEG_BYTES = b"\xff\xd8\xff\xe0" + b"fake-image-bytes"
+PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"fake-image-bytes"
+
+
+def _upload(filename: str, content: bytes | None = None) -> UploadFile:
+    if content is None:
+        content = PNG_BYTES if filename.lower().endswith(".png") else JPEG_BYTES
     return UploadFile(filename=filename, file=BytesIO(content))
 
 

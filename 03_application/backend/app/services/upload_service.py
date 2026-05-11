@@ -11,6 +11,7 @@ from fastapi import UploadFile
 ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
 MAX_UPLOAD_SIZE_MB = 20
 MAX_BATCH_UPLOAD_IMAGES = 50
+MAX_SIGNATURE_BYTES = 16
 _DATASET_FILENAME_MARKER = re.compile(r"(^|[^a-z])(train|training|valid|validation|test)([^a-z]|$)", re.IGNORECASE)
 IDENTIFIER_PATTERN = re.compile(r'^[A-Za-z0-9_-]+$')
 TRAP_CODE_PATTERN = re.compile(r'^[A-Za-z0-9 _-]+$')
@@ -74,6 +75,28 @@ def validate_upload_file(upload: UploadFile) -> None:
         allowed = ', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))
         raise ValueError(f'Unsupported image type "{suffix}". Allowed: {allowed}')
 
+    if not _signature_matches_extension(upload, suffix):
+        raise ValueError('Upload content does not match the declared image type')
+
+
+def _signature_matches_extension(upload: UploadFile, suffix: str) -> bool:
+    file_obj = upload.file
+    try:
+        position = file_obj.tell()
+    except (AttributeError, OSError):
+        position = None
+    header = file_obj.read(MAX_SIGNATURE_BYTES)
+    if position is not None:
+        file_obj.seek(position)
+
+    if suffix in {'.jpg', '.jpeg'}:
+        return header.startswith(b'\xff\xd8\xff')
+    if suffix == '.png':
+        return header.startswith(b'\x89PNG\r\n\x1a\n')
+    if suffix == '.webp':
+        return len(header) >= 12 and header.startswith(b'RIFF') and header[8:12] == b'WEBP'
+    return False
+
 
 def normalize_optional_text(value: str | None) -> str | None:
     if value is None:
@@ -115,14 +138,17 @@ def save_upload_file(
     trap_code: str | None = None,
     capture_date: date | None = None,
 ) -> Path:
+    root = upload_root.resolve()
     destination_dir = (
-        build_upload_storage_path(upload_root, field_id, trap_code, capture_date)
+        build_upload_storage_path(root, field_id, trap_code, capture_date)
         if field_id and trap_code and capture_date
-        else upload_root
+        else root
     )
     destination_dir.mkdir(parents=True, exist_ok=True)
     filename = f'{uuid4().hex}_{secure_filename(upload.filename or "upload.jpg")}'
-    destination = destination_dir / filename
+    destination = (destination_dir / filename).resolve()
+    if root != destination and root not in destination.parents:
+        raise ValueError('Resolved upload path escapes configured upload directory')
     max_bytes = MAX_UPLOAD_SIZE_MB * 1024 * 1024
     size_bytes = 0
     try:
