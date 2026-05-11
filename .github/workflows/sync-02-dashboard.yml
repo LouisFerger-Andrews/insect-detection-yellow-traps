@@ -2,7 +2,7 @@ name: Sync 02 Dashboard To Fork
 
 on:
   push:
-    branches: ["developer"]
+    branches: ["develop"]
     paths:
       - "02_pm_analytics_dashboard/**"
       - ".github/workflows/sync-02-dashboard.yml"
@@ -17,7 +17,7 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
         with:
           fetch-depth: 0
 
