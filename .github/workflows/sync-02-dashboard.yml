@@ -1,0 +1,40 @@
+name: Sync 02 Dashboard To Fork
+
+on:
+  push:
+    branches: ["developer"]
+    paths:
+      - "02_pm_analytics_dashboard/**"
+      - ".github/workflows/sync-02-dashboard.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  sync-dashboard:
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') }}
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate sync secrets
+        env:
+          TARGET_REPO: ${{ secrets.PM_DASHBOARD_TARGET_REPO }}
+          SYNC_TOKEN: ${{ secrets.PM_DASHBOARD_SYNC_TOKEN }}
+        run: |
+          test -n "$TARGET_REPO" || (echo "Missing secret: PM_DASHBOARD_TARGET_REPO (format owner/repo)" && exit 1)
+          test -n "$SYNC_TOKEN" || (echo "Missing secret: PM_DASHBOARD_SYNC_TOKEN (repo write PAT)" && exit 1)
+
+      - name: Push subtree to target repo
+        env:
+          TARGET_REPO: ${{ secrets.PM_DASHBOARD_TARGET_REPO }}
+          TARGET_BRANCH: ${{ secrets.PM_DASHBOARD_TARGET_BRANCH }}
+          SYNC_TOKEN: ${{ secrets.PM_DASHBOARD_SYNC_TOKEN }}
+        run: |
+          BRANCH="${TARGET_BRANCH:-main}"
+          git subtree split --prefix=02_pm_analytics_dashboard -b sdlc-sync-branch
+          git push "https://x-access-token:${SYNC_TOKEN}@github.com/${TARGET_REPO}.git" "sdlc-sync-branch:${BRANCH}" --force

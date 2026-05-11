@@ -139,6 +139,20 @@ Notes:
   - Track failed login attempts and app errors.
   - Alert on unusual usage patterns.
 
+## CI Snapshot + Cross-Repo Sync
+
+This repository now includes GitHub Actions automation for MVP SDLC visibility:
+
+1. On every push to `developer`, CI runs backend tests, frontend tests, and container builds.
+2. CI appends an execution snapshot to `02_pm_analytics_dashboard/quality_history.json` (tests + deployment build outcomes).
+3. If files in `02_pm_analytics_dashboard/` changed, workflow syncs that folder to your dashboard fork/repo.
+
+### Required GitHub repository secrets
+
+- `PM_DASHBOARD_TARGET_REPO`: target repo in `owner/repo` format.
+- `PM_DASHBOARD_SYNC_TOKEN`: PAT with write access to the target repo.
+- `PM_DASHBOARD_TARGET_BRANCH` (optional): target branch in the fork (defaults to `main`).
+
 ## Assumptions
 
 - Issue-focused metrics explicitly exclude pull requests by filtering out `issues` endpoint entries that include `pull_request`.
