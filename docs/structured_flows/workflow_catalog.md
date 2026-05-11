@@ -7,7 +7,8 @@ This document lists the major operational workflows in the insect identification
 - Scope: registration, login, token validation, role-based access.
 - Backend entry points: `app/api/auth.py`, `app/api/deps.py`.
 - Risks: invalid tokens, unauthorized field access.
-- Status: documented at high-level in traceability matrix.
+- Detailed doc: `auth_access_control_flow.md`.
+- Related issue: `#93`.
 
 ## WF-02 Field and Trap Management
 
