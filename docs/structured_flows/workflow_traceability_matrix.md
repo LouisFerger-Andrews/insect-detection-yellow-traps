@@ -16,7 +16,7 @@ Coverage status scale:
 | #49 | [Feature][PoC] Minimal Metadata Capture | Open | Partial | `workflow_catalog.md` (WF-04) |
 | #50 | [Feature][PoC] Manual Data Submission Workflow | Closed | Done | `upload_ingestion_flow.md` |
 | #51 | [Feature][MVP] Structured Upload Workflow with Metadata | Open | Partial | `upload_ingestion_flow.md`, `workflow_catalog.md` |
-| #52 | [Feature][MVP] Batch Image Upload Support | Open | Partial | `upload_ingestion_flow.md` |
+| #52 | [Feature][MVP] Batch Image Upload Support | Open | Done | `upload_ingestion_flow.md` |
 | #53 | [Feature][MVP] Input Standardisation and Validation at Collection | Open | Done | `docs/metadata/rules/collection-input-standards.md` |
 
 ## Metadata task chain
@@ -48,6 +48,15 @@ Coverage status scale:
 | #80 | Enforce standardised formats and constraints during submission | Open | Done | Backend normalizes and validates identifiers, trap codes, date order, batch files, and trap metadata consistency. |
 | #81 | Test and document input standardisation and validation workflow | Open | Done | Frontend/backend tests and automated coverage notes added to `collection-input-standards.md`. |
 
+## Batch upload task chain
+
+| Issue | Title | State | Coverage | Notes |
+|---|---|---|---|---|
+| #71 | Implement batch image selection and upload in frontend | Open | Done | Frontend supports multiple selected images and field-level batch mode; covered by `DashboardPage.test.tsx`. |
+| #72 | Implement backend handling for batch image uploads | Open | Done | Backend accepts multi-image requests, enforces a 50-image cap, and commits SQL rows only after all images process successfully. |
+| #73 | Ensure metadata association and processing for batch uploads | Open | Done | Shared field metadata and optional per-image capture dates are validated and stored per upload. |
+| #75 | Test and document batch upload workflow | Open | Done | Batch E2E, failure, rollback, metadata, and frontend preparation tests are referenced in `upload_ingestion_flow.md`. |
+
 ## Validation/logging task chain
 
 | Issue | Title | State | Coverage | Notes |
@@ -57,7 +66,7 @@ Coverage status scale:
 | #39 | Implement validation, error handling, and logging | Open | Partial | Branch `feature/task-39-validation-error-logging` addresses core backend path. |
 | #41 | Test and document ingestion pipeline workflow | Open | Done | End-to-end and invalid-batch coverage in `03_application/tests/backend/test_ingestion_pipeline_workflow.py`; workflow documented in `upload_ingestion_flow.md`. |
 | #74 | Test and document batch upload workflow | Open | Partial | Suspected duplicate with #75. |
-| #75 | Test and document batch upload workflow | Open | Partial | Documentation baseline added; test evidence pending. |
+| #75 | Test and document batch upload workflow | Open | Done | Covered by batch task chain and `upload_ingestion_flow.md` automated coverage. |
 | #81 | Test and document input standardisation and validation workflow | Open | Partial | Validation docs present; final test evidence pending. |
 
 ## Recommended cleanup actions (issue hygiene)
