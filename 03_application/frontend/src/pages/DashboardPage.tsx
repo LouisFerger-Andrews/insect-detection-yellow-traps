@@ -914,7 +914,7 @@ export default function DashboardPage() {
                   <tbody>
                     {(insights?.results ?? []).slice(0, 100).map((row) => (
                       <tr key={row.upload_id}>
-                        <td>{row.image_path.split('/').at(-1) ?? row.image_path}</td>
+                        <td>{row.image_path.split('/').pop() || row.image_path}</td>
                         <td>{row.field_name}</td>
                         <td>{row.trap_id ? `${row.trap_code} (${row.trap_id})` : row.trap_code}</td>
                         <td>{row.capture_date}</td>
