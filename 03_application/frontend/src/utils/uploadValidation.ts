@@ -9,6 +9,7 @@ export type UploadValidationInput = {
   endDate: string;
   selectedTrapId?: string | null;
   selectedFieldId?: string | null;
+  requireTrapSelection?: boolean;
 };
 
 function extensionFor(filename: string): string {
@@ -25,8 +26,12 @@ function isIsoDate(value: string): boolean {
 export function validateUploadInput(input: UploadValidationInput): string[] {
   const errors: string[] = [];
   const files = input.files ?? [];
+  const requireTrapSelection = input.requireTrapSelection ?? true;
 
-  if (!input.selectedTrapId || !input.selectedFieldId) {
+  if (!input.selectedFieldId) {
+    errors.push('Select a field first.');
+  }
+  if (requireTrapSelection && !input.selectedTrapId) {
     errors.push('Select a trap marker on the map first.');
   }
   if (!isIsoDate(input.startDate)) {

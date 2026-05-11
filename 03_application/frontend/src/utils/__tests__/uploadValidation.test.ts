@@ -16,6 +16,24 @@ describe('validateUploadInput', () => {
     expect(errors).toEqual([]);
   });
 
+  it('accepts field-level batch uploads without an exact trap', () => {
+    const files = [
+      new File(['image-a'], 'field-a.jpg', { type: 'image/jpeg' }),
+      new File(['image-b'], 'field-b.png', { type: 'image/png' }),
+    ];
+
+    const errors = validateUploadInput({
+      files,
+      startDate: '2026-04-01',
+      endDate: '2026-04-02',
+      selectedTrapId: null,
+      selectedFieldId: 'field-1',
+      requireTrapSelection: false,
+    });
+
+    expect(errors).toEqual([]);
+  });
+
   it('rejects invalid dates, unsupported images, dataset files, and empty files', () => {
     const unsupported = new File(['data'], 'trap-a.gif', { type: 'image/gif' });
     const dataset = new File(['data'], 'training-sample.jpg', { type: 'image/jpeg' });

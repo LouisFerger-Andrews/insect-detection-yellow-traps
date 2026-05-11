@@ -76,6 +76,27 @@ label {
   font-size: 14px;
 }
 
+.segmented-fieldset {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 16px;
+  padding: 10px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+}
+
+.segmented-fieldset legend {
+  padding: 0 4px;
+  font-size: 13px;
+  color: #475569;
+}
+
+.segmented-fieldset label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 input,
 select,
 button {

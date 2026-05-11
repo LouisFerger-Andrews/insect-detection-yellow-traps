@@ -244,6 +244,36 @@ describe('DashboardPage', () => {
     expect(postFormMock).not.toHaveBeenCalled();
   });
 
+  it('uploads multiple images in field-level batch mode without exact trap placement', async () => {
+    render(<DashboardPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Upload Trap Images/i }));
+    await waitFor(() => expect(screen.getByText('Upload Trap Images to Selected Trap')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getByText('FieldMapMock upload')).toBeInTheDocument());
+
+    fireEvent.click(screen.getByLabelText('Field-level batch'));
+    fireEvent.change(screen.getByLabelText('Batch Field'), { target: { value: 'field-1' } });
+    fireEvent.change(screen.getByLabelText('Start Date'), { target: { value: '2026-04-01' } });
+    fireEvent.change(screen.getByLabelText('End Date'), { target: { value: '2026-04-02' } });
+
+    const files = [
+      new File(['img-a'], 'field-a.jpg', { type: 'image/jpeg' }),
+      new File(['img-b'], 'field-b.png', { type: 'image/png' }),
+    ];
+    const imagesInput = screen.getByLabelText('Images') as HTMLInputElement;
+    Object.defineProperty(imagesInput, 'files', { value: files });
+    fireEvent.change(imagesInput);
+
+    fireEvent.submit(screen.getByRole('button', { name: 'Upload Batch + Run Model' }).closest('form')!);
+
+    await waitFor(() => expect(postFormMock).toHaveBeenCalledWith('/api/analysis/upload-range', expect.any(FormData), 'token-1'));
+    const submitted = postFormMock.mock.calls[0][1] as FormData;
+    expect(submitted.get('field_id')).toBe('field-1');
+    expect(submitted.get('trap_id')).toBeNull();
+    expect(submitted.get('trap_code')).toBe('FIELD_BATCH');
+    expect(submitted.getAll('images')).toHaveLength(2);
+  });
+
   it('handles exploratory validation and backend error response', async () => {
     postMock.mockRejectedValueOnce(new Error('Chat failed'));
 

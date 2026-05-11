@@ -247,6 +247,7 @@ export default function DashboardPage() {
   const [selectedTrap, setSelectedTrap] = useState<TrapPoint | null>(null);
   const [selectedFieldId, setSelectedFieldId] = useState<string | null>(null);
   const [preferredUploadFieldId, setPreferredUploadFieldId] = useState<string | null>(null);
+  const [uploadMode, setUploadMode] = useState<'trap' | 'field'>('trap');
 
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
@@ -281,8 +282,9 @@ export default function DashboardPage() {
         endDate,
         selectedTrapId: selectedTrap?.id ?? null,
         selectedFieldId,
+        requireTrapSelection: uploadMode === 'trap',
       }),
-    [selectedFiles, startDate, endDate, selectedTrap, selectedFieldId]
+    [selectedFiles, startDate, endDate, selectedTrap, selectedFieldId, uploadMode]
   );
 
   const fmt = (value: number | null | undefined, digits: number = 1) => {
@@ -402,6 +404,13 @@ export default function DashboardPage() {
   }, [section, token]);
 
   useEffect(() => {
+    if (section !== 'upload' || !token) return;
+    void loadFieldOptions().catch((err) => {
+      setError(err instanceof Error ? err.message : 'Failed to load fields');
+    });
+  }, [section, token]);
+
+  useEffect(() => {
     if (section !== 'explore' || !token) return;
     void loadAvailableYears(chatFieldId || undefined).catch((err) => {
       setError(err instanceof Error ? err.message : 'Failed to load years');
@@ -466,7 +475,11 @@ export default function DashboardPage() {
       setError(uploadValidationErrors[0]);
       return;
     }
-    if (!selectedTrap || !selectedFieldId) {
+    if (!selectedFieldId) {
+      setError('Select a field first.');
+      return;
+    }
+    if (uploadMode === 'trap' && !selectedTrap) {
       setError('Select a trap marker on the map first.');
       return;
     }
@@ -479,8 +492,12 @@ export default function DashboardPage() {
       formData.set('start_date', startDate);
       formData.set('end_date', endDate);
       formData.set('field_id', selectedFieldId);
-      formData.set('trap_id', selectedTrap.id);
-      formData.set('trap_code', selectedTrap.name);
+      if (uploadMode === 'trap' && selectedTrap) {
+        formData.set('trap_id', selectedTrap.id);
+        formData.set('trap_code', selectedTrap.name);
+      } else {
+        formData.set('trap_code', 'FIELD_BATCH');
+      }
       selectedFiles.forEach((file) => formData.append('images', file));
 
       const response = await apiClient.postForm<UploadBatchResponse>('/api/analysis/upload-range', formData, token);
@@ -535,10 +552,57 @@ export default function DashboardPage() {
         <section className="card">
           <h2>{title}</h2>
           <p>
-            Active trap: <strong>{selectedTrap?.name ?? 'None selected'}</strong>
-            {selectedTrap ? ` (${selectedTrap.id})` : ''}
+            {uploadMode === 'trap' ? (
+              <>
+                Active trap: <strong>{selectedTrap?.name ?? 'None selected'}</strong>
+                {selectedTrap ? ` (${selectedTrap.id})` : ''}
+              </>
+            ) : (
+              <>
+                Field-level batch: <strong>{fieldOptions.find((field) => field.id === selectedFieldId)?.name ?? 'No field selected'}</strong>
+              </>
+            )}
           </p>
           <form onSubmit={uploadBatch} className="form">
+            <fieldset className="segmented-fieldset">
+              <legend>Batch metadata mode</legend>
+              <label>
+                <input
+                  type="radio"
+                  name="uploadMode"
+                  value="trap"
+                  checked={uploadMode === 'trap'}
+                  onChange={() => setUploadMode('trap')}
+                />
+                Exact trap
+              </label>
+              <label>
+                <input
+                  type="radio"
+                  name="uploadMode"
+                  value="field"
+                  checked={uploadMode === 'field'}
+                  onChange={() => {
+                    setUploadMode('field');
+                    setSelectedTrap(null);
+                  }}
+                />
+                Field-level batch
+              </label>
+            </fieldset>
+            {uploadMode === 'field' ? (
+              <label>
+                Batch Field
+                <select value={selectedFieldId ?? ''} onChange={(event) => setSelectedFieldId(event.target.value || null)} required>
+                  <option value="">Select field for batch</option>
+                  {fieldOptions.map((field) => (
+                    <option key={field.id} value={field.id}>
+                      {field.name} ({field.trap_count} traps)
+                    </option>
+                  ))}
+                </select>
+              </label>
+            ) : null}
             <label>
               Start Date
               <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} required />
@@ -565,7 +629,7 @@ export default function DashboardPage() {
               </div>
             ) : null}
             <button type="submit" disabled={busy || uploadValidationErrors.length > 0}>
-              {busy ? 'Processing...' : 'Upload + Run Model'}
+              {busy ? 'Processing...' : uploadMode === 'field' ? 'Upload Batch + Run Model' : 'Upload + Run Model'}
             </button>
           </form>
         </section>
