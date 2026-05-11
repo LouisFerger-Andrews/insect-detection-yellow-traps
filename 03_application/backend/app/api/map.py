@@ -7,6 +7,7 @@ import requests
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 
+from app.api.access import require_field_access
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models import FieldMap, TrapPoint, TrapUpload, User
@@ -103,11 +104,7 @@ def get_field_map(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FieldMapDetail:
-    field = db.query(FieldMap).filter(FieldMap.id == field_id).first()
-    if field is None:
-        raise HTTPException(status_code=404, detail='Field not found')
-    if current_user.role != 'admin' and field.owner_user_id != current_user.id:
-        raise HTTPException(status_code=403, detail='Forbidden')
+    field = require_field_access(db, field_id, current_user)
     return _to_field_detail(field, field.traps)
 
 
@@ -118,11 +115,7 @@ def add_trap_to_field(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FieldMapDetail:
-    field = db.query(FieldMap).filter(FieldMap.id == field_id).first()
-    if field is None:
-        raise HTTPException(status_code=404, detail='Field not found')
-    if current_user.role != 'admin' and field.owner_user_id != current_user.id:
-        raise HTTPException(status_code=403, detail='Forbidden')
+    field = require_field_access(db, field_id, current_user)
 
     polygon = [(point['lat'], point['lng']) for point in json.loads(field.polygon_geojson)]
     if not point_in_polygon(body.lat, body.lng, polygon):
@@ -155,11 +148,7 @@ def update_trap(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ) -> FieldMapDetail:
-    field = db.query(FieldMap).filter(FieldMap.id == field_id).first()
-    if field is None:
-        raise HTTPException(status_code=404, detail='Field not found')
-    if current_user.role != 'admin' and field.owner_user_id != current_user.id:
-        raise HTTPException(status_code=403, detail='Forbidden')
+    field = require_field_access(db, field_id, current_user)
 
     trap = db.query(TrapPoint).filter(TrapPoint.id == trap_id, TrapPoint.field_id == field.id).first()
     if trap is None:
