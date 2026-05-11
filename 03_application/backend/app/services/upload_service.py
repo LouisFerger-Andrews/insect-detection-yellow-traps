@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import date, timedelta
 from pathlib import Path
 import re
-from typing import List
+from typing import List, Sequence
 from uuid import uuid4
 
 from fastapi import UploadFile
@@ -34,6 +34,23 @@ def allocate_capture_dates(start_date: date, end_date: date, count: int) -> List
         offset = round(index * step)
         values.append(start_date + timedelta(days=offset))
     return values
+
+
+def resolve_batch_capture_dates(
+    start_date: date,
+    end_date: date,
+    count: int,
+    explicit_capture_dates: Sequence[date] | None = None,
+) -> List[date]:
+    if explicit_capture_dates is None:
+        return allocate_capture_dates(start_date, end_date, count)
+
+    capture_dates = list(explicit_capture_dates)
+    if len(capture_dates) != count:
+        raise ValueError('capture_dates must contain exactly one date for each uploaded image')
+    if any(capture_date < start_date or capture_date > end_date for capture_date in capture_dates):
+        raise ValueError('capture_dates must fall within the submitted start_date and end_date range')
+    return capture_dates
 
 
 def validate_upload_file(upload: UploadFile) -> None:

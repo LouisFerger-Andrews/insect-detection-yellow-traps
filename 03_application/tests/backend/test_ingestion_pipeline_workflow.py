@@ -236,6 +236,88 @@ def test_upload_range_rolls_back_sql_when_batch_processing_fails(
     assert db_session.scalars(select(Detection)).all() == []
 
 
+def test_upload_range_uses_explicit_capture_dates_for_per_image_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    db_session: Session,
+    ingestion_user_and_field: tuple[User, FieldMap],
+) -> None:
+    user, field = ingestion_user_and_field
+    upload_dir = tmp_path / "uploads"
+    graph_calls: list[tuple[str, int, date, int]] = []
+
+    class FakeInferenceService:
+        def run(self, image_path: Path):  # noqa: ANN201
+            assert image_path.exists()
+            return [{"bbox_xyxy": [1.0, 2.0, 3.0, 4.0], "confidence": 0.9, "class_id": 0}]
+
+    class FakeGraphService:
+        def link_upload_to_field(self, field_id: str, upload_id: int, capture_date: date, detection_count: int) -> None:
+            graph_calls.append((field_id, upload_id, capture_date, detection_count))
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(analysis_api, "get_settings", lambda: SimpleNamespace(upload_dir=str(upload_dir)))
+    monkeypatch.setattr(analysis_api, "InferenceService", FakeInferenceService)
+    monkeypatch.setattr(analysis_api, "GraphService", FakeGraphService)
+    monkeypatch.setattr(analysis_api, "infer_sync_start_date", lambda db, field_id: None)
+
+    response = analysis_api.upload_range(
+        start_date=date(2026, 1, 1),
+        end_date=date(2026, 1, 8),
+        field_id=field.id,
+        trap_id=None,
+        trap_code="FIELD_BATCH",
+        capture_dates=[date(2026, 1, 3), date(2026, 1, 6)],
+        images=[_upload("capture-a.jpg"), _upload("capture-b.jpg")],
+        db=db_session,
+        current_user=user,
+    )
+
+    uploads = db_session.scalars(select(TrapUpload).order_by(TrapUpload.capture_date)).all()
+
+    assert [result.capture_date for result in response.results] == [date(2026, 1, 3), date(2026, 1, 6)]
+    assert [upload.capture_date for upload in uploads] == [date(2026, 1, 3), date(2026, 1, 6)]
+    assert [upload.trap_id for upload in uploads] == [None, None]
+    assert [upload.field_id for upload in uploads] == [field.id, field.id]
+    assert [upload.trap_code for upload in uploads] == ["FIELD_BATCH", "FIELD_BATCH"]
+    assert [call[2] for call in graph_calls] == [date(2026, 1, 3), date(2026, 1, 6)]
+
+
+def test_upload_range_rejects_inconsistent_per_image_capture_dates(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    db_session: Session,
+    ingestion_user_and_field: tuple[User, FieldMap],
+) -> None:
+    user, field = ingestion_user_and_field
+
+    class UnexpectedInferenceService:
+        def run(self, image_path: Path):  # noqa: ANN201
+            raise AssertionError("inference should not run for inconsistent per-image metadata")
+
+    monkeypatch.setattr(analysis_api, "get_settings", lambda: SimpleNamespace(upload_dir=str(tmp_path / "uploads")))
+    monkeypatch.setattr(analysis_api, "InferenceService", UnexpectedInferenceService)
+
+    with pytest.raises(HTTPException) as exc:
+        analysis_api.upload_range(
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 8),
+            field_id=field.id,
+            trap_id=None,
+            trap_code="FIELD_BATCH",
+            capture_dates=[date(2026, 1, 3)],
+            images=[_upload("capture-a.jpg"), _upload("capture-b.jpg")],
+            db=db_session,
+            current_user=user,
+        )
+
+    assert exc.value.status_code == 400
+    assert exc.value.detail == "capture_dates must contain exactly one date for each uploaded image"
+    assert db_session.scalars(select(TrapUpload)).all() == []
+
+
 def test_upload_range_rejects_inconsistent_trap_metadata(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

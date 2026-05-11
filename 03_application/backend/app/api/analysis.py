@@ -21,8 +21,8 @@ from app.services.environment_service import infer_sync_start_date, sync_environ
 from app.services.inference_service import InferenceService
 from app.services.upload_service import (
     MAX_BATCH_UPLOAD_IMAGES,
-    allocate_capture_dates,
     normalize_optional_text,
+    resolve_batch_capture_dates,
     save_upload_file,
     validate_identifier,
     validate_trap_code,
@@ -41,6 +41,7 @@ def upload_range(
     field_id: str | None = Form(default=None),
     trap_id: str | None = Form(default=None),
     trap_code: str | None = Form(default=None),
+    capture_dates: list[date] | None = Form(default=None),
     images: list[UploadFile] = File(...),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -48,6 +49,7 @@ def upload_range(
     field_id = normalize_optional_text(field_id)
     trap_id = normalize_optional_text(trap_id)
     trap_code = normalize_optional_text(trap_code)
+    capture_dates = capture_dates if isinstance(capture_dates, list) else None
 
     if start_date > end_date:
         raise HTTPException(status_code=400, detail='start_date must be before or equal to end_date')
@@ -66,7 +68,11 @@ def upload_range(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
 
-    capture_dates = allocate_capture_dates(start_date, end_date, len(images))
+    try:
+        resolved_capture_dates = resolve_batch_capture_dates(start_date, end_date, len(images), capture_dates)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     settings = get_settings()
     upload_root = Path(settings.upload_dir)
     infer = InferenceService()
@@ -126,7 +132,7 @@ def upload_range(
                 field_id=resolved_field_id,
                 trap_id=trap_id,
                 trap_code=resolved_trap_code,
-                capture_date=capture_dates[idx],
+                capture_date=resolved_capture_dates[idx],
                 image_path=str(saved_path),
                 detection_count=len(detections),
                 confidence_avg=float(confidence_avg),
