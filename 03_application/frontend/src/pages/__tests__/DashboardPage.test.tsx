@@ -69,10 +69,12 @@ function setupGetMocks() {
           model_version: 'model.pt',
           filters: {
             field_id: 'field-1',
+            trap_id: null,
             trap_code: null,
             start_date: null,
             end_date: null,
             min_detections: null,
+            max_detections: null,
             min_confidence: null,
           },
         },
@@ -284,11 +286,17 @@ describe('DashboardPage', () => {
     expect(screen.getByText('Total Detections')).toBeInTheDocument();
     expect(screen.getByText('image-a.jpg')).toBeInTheDocument();
 
+    fireEvent.change(screen.getByLabelText('Insight trap ID filter'), { target: { value: 'trap-1' } });
     fireEvent.change(screen.getByLabelText('Insight trap code filter'), { target: { value: 'T1' } });
     fireEvent.change(screen.getByLabelText('Minimum detections filter'), { target: { value: '3' } });
+    fireEvent.change(screen.getByLabelText('Maximum detections filter'), { target: { value: '10' } });
     await waitFor(() => expect(screen.getByRole('button', { name: 'Apply Filters' })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Apply Filters' }));
-    await waitFor(() => expect(getMock).toHaveBeenCalledWith(expect.stringContaining('/api/analytics/insights?'), 'token-1'));
+    await waitFor(() => {
+      expect(getMock).toHaveBeenCalledWith(expect.stringContaining('/api/analytics/insights?'), 'token-1');
+      expect(getMock).toHaveBeenCalledWith(expect.stringContaining('trap_id=trap-1'), 'token-1');
+      expect(getMock).toHaveBeenCalledWith(expect.stringContaining('max_detections=10'), 'token-1');
+    });
 
     fireEvent.click(screen.getByRole('button', { name: 'Open' }));
     await waitFor(() => expect(screen.getByText('Image Result #1')).toBeInTheDocument());

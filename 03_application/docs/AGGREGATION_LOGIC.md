@@ -103,6 +103,7 @@ All filters operate as conjunctions (AND logic) applied to the base query:
 | Filter | Type | Description |
 |--------|------|-------------|
 | `field_id` | String | Restrict to single field UUID |
+| `trap_id` | String | Restrict to specific stored trap UUID/identifier |
 | `trap_code` | String | Restrict to specific trap identifier |
 | `start_date` | Date | Include uploads >= this date |
 | `end_date` | Date | Include uploads <= this date |
@@ -143,6 +144,7 @@ Result: Images from North Field in May with 2-20 high-confidence detections
     "model_version": "model-weights-filename.pt",
     "filters": {
       "field_id": "...",
+      "trap_id": "...",
       "trap_code": "...",
       "start_date": "2026-05-01",
       "end_date": "2026-05-31",
@@ -321,6 +323,7 @@ Returns aggregated detections with KPIs and detailed results.
 **Parameters**
 ```
 field_id: string (optional) - Filter to field
+trap_id: string (optional) - Filter to stored trap identifier
 trap_code: string (optional) - Filter to trap
 start_date: date (optional) - YYYY-MM-DD
 end_date: date (optional) - YYYY-MM-DD

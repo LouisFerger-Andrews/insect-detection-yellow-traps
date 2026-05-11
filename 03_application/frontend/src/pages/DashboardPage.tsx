@@ -263,6 +263,7 @@ export default function DashboardPage() {
   const [chatYear, setChatYear] = useState<string>('all');
   const [chatRange, setChatRange] = useState<string>('all');
   const [envDataScope, setEnvDataScope] = useState<string>('all');
+  const [insightTrapIdFilter, setInsightTrapIdFilter] = useState('');
   const [insightTrapFilter, setInsightTrapFilter] = useState('');
   const [insightStartDate, setInsightStartDate] = useState('');
   const [insightEndDate, setInsightEndDate] = useState('');
@@ -319,6 +320,7 @@ export default function DashboardPage() {
   const buildInsightQuery = () => {
     const parts: string[] = [];
     if (envSyncFieldId) parts.push(`field_id=${encodeURIComponent(envSyncFieldId)}`);
+    if (insightTrapIdFilter.trim()) parts.push(`trap_id=${encodeURIComponent(insightTrapIdFilter.trim())}`);
     if (insightTrapFilter.trim()) parts.push(`trap_code=${encodeURIComponent(insightTrapFilter.trim())}`);
     if (insightStartDate) parts.push(`start_date=${encodeURIComponent(insightStartDate)}`);
     if (insightEndDate) parts.push(`end_date=${encodeURIComponent(insightEndDate)}`);
@@ -794,6 +796,13 @@ export default function DashboardPage() {
                     </option>
                   ))}
                 </select>
+                <input
+                  type="text"
+                  value={insightTrapIdFilter}
+                  onChange={(event) => setInsightTrapIdFilter(event.target.value)}
+                  placeholder="Trap ID"
+                  aria-label="Insight trap ID filter"
+                />
                 <input
                   type="text"
                   value={insightTrapFilter}

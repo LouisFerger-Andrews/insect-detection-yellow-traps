@@ -21,6 +21,7 @@ def _apply_insight_filters(
     *,
     current_user: User,
     field_id: str | None,
+    trap_id: str | None = None,
     trap_code: str | None,
     start_date: date | None,
     end_date: date | None,
@@ -32,6 +33,8 @@ def _apply_insight_filters(
         query = query.filter(FieldMap.owner_user_id == current_user.id)
     if field_id is not None:
         query = query.filter(TrapUpload.field_id == field_id)
+    if trap_id is not None:
+        query = query.filter(TrapUpload.trap_id == trap_id)
     if trap_code is not None:
         query = query.filter(TrapUpload.trap_code == trap_code)
     if start_date is not None:
@@ -62,6 +65,7 @@ def _insight_payload(
     db: Session,
     current_user: User,
     field_id: str | None,
+    trap_id: str | None = None,
     trap_code: str | None,
     start_date: date | None,
     end_date: date | None,
@@ -83,6 +87,7 @@ def _insight_payload(
             base_query,
             current_user=current_user,
             field_id=field_id,
+            trap_id=trap_id,
             trap_code=trap_code,
             start_date=start_date,
             end_date=end_date,
@@ -146,6 +151,7 @@ def _insight_payload(
             'model_version': Path(settings.model_weights_path).name,
             'filters': {
                 'field_id': field_id,
+                'trap_id': trap_id,
                 'trap_code': trap_code,
                 'start_date': start_date.isoformat() if start_date else None,
                 'end_date': end_date.isoformat() if end_date else None,
@@ -194,6 +200,7 @@ def _insight_payload(
 @router.get('/insights')
 def insight_dashboard(
     field_id: str | None = Query(default=None),
+    trap_id: str | None = None,
     trap_code: str | None = Query(default=None),
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
@@ -207,6 +214,7 @@ def insight_dashboard(
         db=db,
         current_user=current_user,
         field_id=field_id,
+        trap_id=trap_id,
         trap_code=trap_code,
         start_date=start_date,
         end_date=end_date,
@@ -219,6 +227,7 @@ def insight_dashboard(
 @router.get('/insights/export.csv')
 def export_insight_dashboard_csv(
     field_id: str | None = Query(default=None),
+    trap_id: str | None = None,
     trap_code: str | None = Query(default=None),
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
@@ -232,6 +241,7 @@ def export_insight_dashboard_csv(
         db=db,
         current_user=current_user,
         field_id=field_id,
+        trap_id=trap_id,
         trap_code=trap_code,
         start_date=start_date,
         end_date=end_date,

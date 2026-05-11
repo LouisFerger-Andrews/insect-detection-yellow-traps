@@ -468,7 +468,19 @@ def test_119_missing_metadata_handled(
     insight_seed_data: User,
 ) -> None:
     """Missing or incomplete metadata is handled without breaking the view."""
-    # Uploads with trap_id and without should both be included
+    unassigned_upload = TrapUpload(
+        user_id=insight_seed_data.id,
+        field_id="field-a",
+        trap_id=None,
+        trap_code="FIELD_BATCH",
+        capture_date=date(2026, 5, 4),
+        image_path="storage/uploads/field-a/2026/05/04/FIELD_BATCH/unassigned.jpg",
+        detection_count=0,
+        confidence_avg=0.0,
+    )
+    insight_db_session.add(unassigned_upload)
+    insight_db_session.commit()
+
     out = analytics_api.insight_dashboard(
         field_id=None,
         trap_code=None,
@@ -482,9 +494,10 @@ def test_119_missing_metadata_handled(
     )
 
     # View should still show results
-    assert len(out["results"]) > 0
+    assert any(result["trap_id"] is None for result in out["results"])
+    assert any(result["trap_code"] == "FIELD_BATCH" for result in out["results"])
     # Aggregations should still work
-    assert out["kpis"]["total_detections"] > 0
+    assert out["kpis"]["processed_images"] == 3
 
 
 def test_119_results_traceable_to_images(
@@ -563,6 +576,28 @@ def test_120_filter_by_trap(
     assert all(result["trap_code"] == "T-A" for result in out["results"])
 
 
+def test_120_filter_by_trap_id(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Trap ID filtering is available where stored trap identifiers exist."""
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_id="trap-a",
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=None,
+        max_detections=None,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    assert [result["trap_id"] for result in out["results"]] == ["trap-a"]
+    assert out["context"]["filters"]["trap_id"] == "trap-a"
+
+
 def test_120_filter_by_date_range(
     insight_db_session: Session,
     insight_seed_data: User,
@@ -604,6 +639,41 @@ def test_120_filter_by_detection_count_range(
     # Should only have results with 2-5 detections
     for result in out["results"]:
         assert 2 <= result["detection_count"] <= 5
+
+
+def test_120_filter_by_zero_detection_count(
+    insight_db_session: Session,
+    insight_seed_data: User,
+) -> None:
+    """Detection count filtering supports zero-detection images for manual review."""
+    zero_upload = TrapUpload(
+        user_id=insight_seed_data.id,
+        field_id="field-a",
+        trap_id="trap-zero",
+        trap_code="T-ZERO",
+        capture_date=date(2026, 5, 5),
+        image_path="storage/uploads/field-a/2026/05/05/T-ZERO/zero.jpg",
+        detection_count=0,
+        confidence_avg=0.0,
+    )
+    insight_db_session.add(zero_upload)
+    insight_db_session.commit()
+
+    out = analytics_api.insight_dashboard(
+        field_id=None,
+        trap_code=None,
+        start_date=None,
+        end_date=None,
+        min_detections=0,
+        max_detections=0,
+        min_confidence=None,
+        db=insight_db_session,
+        current_user=insight_seed_data,
+    )
+
+    assert [result["trap_code"] for result in out["results"]] == ["T-ZERO"]
+    assert out["kpis"]["processed_images"] == 1
+    assert out["kpis"]["total_detections"] == 0
 
 
 def test_120_filter_by_confidence(

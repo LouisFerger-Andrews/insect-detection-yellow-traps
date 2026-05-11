@@ -11,10 +11,12 @@ The insight dashboard is backed by stored upload and detection records.
 Filters:
 
 - Field
+- Trap ID
 - Trap code
 - Start date
 - End date
 - Minimum detections
+- Maximum detections
 - Minimum average confidence
 
 The API applies the current user's access scope. Admin users can review all fields; regular users only see uploads from fields they own.
@@ -79,7 +81,7 @@ GET /api/analytics/insights
 
 1. Open Monitoring Analytics.
 2. Select a field or leave the field filter empty for all accessible fields.
-3. Optionally enter trap code, date range, minimum detections, or confidence threshold.
+3. Optionally enter trap ID, trap code, date range, minimum/maximum detections, or confidence threshold.
 4. Apply filters.
 5. Review KPIs, trend charts, comparison charts, and image-level results.
 6. Open individual image rows when prediction details are needed.

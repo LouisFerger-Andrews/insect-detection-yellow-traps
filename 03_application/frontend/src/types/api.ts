@@ -225,10 +225,12 @@ export type InsightDashboard = {
     model_version: string;
     filters: {
       field_id?: string | null;
+      trap_id?: string | null;
       trap_code?: string | null;
       start_date?: string | null;
       end_date?: string | null;
       min_detections?: number | null;
+      max_detections?: number | null;
       min_confidence?: number | null;
     };
   };
