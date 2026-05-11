@@ -305,7 +305,6 @@ def model_stats(
     return {
         'model': {
             'weights_file': Path(settings.model_weights_path).name,
-            'weights_path': settings.model_weights_path,
             'confidence_threshold': settings.model_confidence,
             'image_size': settings.model_image_size,
         },

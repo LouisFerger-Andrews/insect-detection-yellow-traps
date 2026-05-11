@@ -222,6 +222,8 @@ def test_model_stats_and_list_uploads(monkeypatch: pytest.MonkeyPatch, tmp_path:
 
     stats = analysis_api.model_stats(db=db, current_user=DummyUser(id=1))
     assert stats["evaluation"]["precision"] == 0.9
+    assert stats["model"]["weights_file"] == "swd_yolo_best.pt"
+    assert "weights_path" not in stats["model"]
     assert stats["production_observed"]["total_uploads"] == 3
 
     rows = analysis_api.list_my_uploads(db=db, current_user=DummyUser(id=1, role="admin"))
