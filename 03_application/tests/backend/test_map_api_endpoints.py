@@ -74,7 +74,7 @@ def test_search_location_parses_response(monkeypatch: pytest.MonkeyPatch) -> Non
             return [{"display_name": "A", "lat": "52.1", "lon": "5.2"}]
 
     monkeypatch.setattr(map_api.requests, "get", lambda *args, **kwargs: Resp())
-    out = map_api.search_location("Amsterdam")
+    out = map_api.search_location("Amsterdam", current_user=DummyUser(id=1))
     assert out[0].display_name == "A"
     assert out[0].lat == 52.1
     assert out[0].lng == 5.2
@@ -171,4 +171,3 @@ def test_list_and_get_field_maps() -> None:
     db_get = FakeDB([FakeQuery(first_value=detail_field)])
     got = map_api.get_field_map("field-1", db=db_get, current_user=DummyUser(id=1, role="admin"))
     assert got.id == "field-1"
-

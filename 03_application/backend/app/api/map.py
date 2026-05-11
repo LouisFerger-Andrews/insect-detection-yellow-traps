@@ -26,7 +26,11 @@ router = APIRouter(prefix='/api/map', tags=['map'])
 
 
 @router.get('/search', response_model=list[SearchResult])
-def search_location(q: str = Query(..., min_length=2, max_length=120)) -> list[SearchResult]:
+def search_location(
+    q: str = Query(..., min_length=2, max_length=120),
+    current_user: User = Depends(get_current_user),
+) -> list[SearchResult]:
+    _ = current_user
     response = requests.get(
         'https://nominatim.openstreetmap.org/search',
         params={'q': q, 'format': 'jsonv2', 'limit': 8},
