@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+import asyncio
+from types import SimpleNamespace
+
 import pytest
 
 pytest.importorskip("jose")
@@ -7,9 +10,11 @@ pytest.importorskip("passlib")
 
 from jose import jwt
 from passlib.exc import MissingBackendError
+from fastapi import Response
 
 from app.core import config as cfg
 from app.core.security import ALGORITHM, create_access_token, hash_password, verify_password
+from app.core.security_headers import add_security_headers
 
 
 def _seed_env(monkeypatch) -> None:  # noqa: ANN001
@@ -42,3 +47,16 @@ def test_create_access_token_contains_expected_claims(monkeypatch) -> None:  # n
     assert payload["type"] == "access"
     assert "iat" in payload
     assert "exp" in payload
+
+
+def test_security_headers_are_added_to_responses() -> None:
+    async def call_next(request):  # noqa: ANN001
+        _ = request
+        return Response()
+
+    request = SimpleNamespace(url=SimpleNamespace(scheme="http"))
+    response = asyncio.run(add_security_headers(request, call_next))
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+    assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert response.headers["Permissions-Policy"] == "camera=(), microphone=(), geolocation=()"
