@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from sqlalchemy import extract, func
 from sqlalchemy.orm import Session
 
+from app.api.access import require_field_access
 from app.api.deps import get_current_user
 from app.core.config import get_settings
 from app.db.session import get_db
@@ -53,11 +54,7 @@ def _apply_insight_filters(
 def _validate_field_access(db: Session, field_id: str | None, current_user: User) -> None:
     if field_id is None:
         return
-    field = db.query(FieldMap).filter(FieldMap.id == field_id).first()
-    if field is None:
-        raise HTTPException(status_code=404, detail='Field not found')
-    if current_user.role != 'admin' and field.owner_user_id != current_user.id:
-        raise HTTPException(status_code=403, detail='Forbidden')
+    require_field_access(db, field_id, current_user)
 
 
 def _insight_payload(
@@ -309,11 +306,7 @@ def analytics_overview(
     if current_user.role != 'admin':
         years_query = years_query.filter(FieldMap.owner_user_id == current_user.id)
     if field_id is not None:
-        field = db.query(FieldMap).filter(FieldMap.id == field_id).first()
-        if field is None:
-            raise HTTPException(status_code=404, detail='Field not found')
-        if current_user.role != 'admin' and field.owner_user_id != current_user.id:
-            raise HTTPException(status_code=403, detail='Forbidden')
+        require_field_access(db, field_id, current_user)
         years_query = years_query.filter(TrapUpload.field_id == field_id)
     available_year_rows = years_query.distinct().order_by(extract('year', TrapUpload.capture_date)).all()
     available_years = [int(row[0]) for row in available_year_rows if row[0] is not None]

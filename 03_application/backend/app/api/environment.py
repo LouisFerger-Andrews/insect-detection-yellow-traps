@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import and_, extract, func
 from sqlalchemy.orm import Session
 
+from app.api.access import require_field_access
 from app.api.deps import get_current_user
 from app.db.session import get_db
 from app.models import EnvironmentalDaily, EnvironmentalSourceDaily, FieldMap, TrapUpload, User
@@ -16,12 +17,7 @@ router = APIRouter(prefix='/api/environment', tags=['environment'])
 
 
 def _get_field_or_403(db: Session, field_id: str, current_user: User) -> FieldMap:
-    field = db.query(FieldMap).filter(FieldMap.id == field_id).first()
-    if field is None:
-        raise HTTPException(status_code=404, detail='Field not found')
-    if current_user.role != 'admin' and field.owner_user_id != current_user.id:
-        raise HTTPException(status_code=403, detail='Forbidden')
-    return field
+    return require_field_access(db, field_id, current_user)
 
 
 @router.post('/fields/{field_id}/sync')

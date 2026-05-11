@@ -44,6 +44,7 @@ describe('AuthProvider', () => {
     );
 
     await waitFor(() => expect(screen.getByTestId('user').textContent).toBe('u@example.com'));
+    expect(getMock).toHaveBeenCalledWith('/api/auth/me', 'abc');
 
     await act(async () => {
       screen.getByText('logout').click();
@@ -63,6 +64,8 @@ describe('AuthProvider', () => {
     );
 
     await waitFor(() => expect(localStorage.getItem('auth_token')).toBeNull());
+    expect(screen.getByTestId('token').textContent).toBe('none');
+    expect(screen.getByTestId('user').textContent).toBe('none');
   });
 
   it('login stores token and register chains login', async () => {
@@ -81,10 +84,19 @@ describe('AuthProvider', () => {
     await act(async () => {
       screen.getByText('login').click();
     });
+    expect(postMock).toHaveBeenCalledWith('/api/auth/login', {
+      email: 'u@example.com',
+      password: 'password123',
+    });
     expect(localStorage.getItem('auth_token')).toBe('token-login');
 
     await act(async () => {
       screen.getByText('register').click();
+    });
+    expect(postMock).toHaveBeenCalledWith('/api/auth/register', {
+      email: 'n@example.com',
+      full_name: 'New User',
+      password: 'password123',
     });
     expect(localStorage.getItem('auth_token')).toBe('token-register');
   });
