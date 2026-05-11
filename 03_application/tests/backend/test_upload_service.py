@@ -20,6 +20,10 @@ from app.services.upload_service import (
     validate_upload_file,
 )
 
+JPEG_BYTES = b"\xff\xd8\xff\xe0" + b"jpeg-bytes"
+PNG_BYTES = b"\x89PNG\r\n\x1a\n" + b"png-bytes"
+WEBP_BYTES = b"RIFF\x10\x00\x00\x00WEBP" + b"webp-bytes"
+
 
 def test_secure_filename_strips_unsafe_chars() -> None:
     assert secure_filename("..//bad*name?.jpg") == "badname.jpg"
@@ -62,10 +66,21 @@ def test_save_upload_file_uses_hierarchical_storage_context(tmp_path: Path) -> N
 
 def test_upload_file_validation_rejects_unsupported_and_dataset_names() -> None:
     with pytest.raises(ValueError, match="Unsupported image type"):
-        validate_upload_file(SimpleNamespace(filename="trap.gif"))
+        validate_upload_file(SimpleNamespace(filename="trap.gif", file=BytesIO(b"GIF89a")))
 
     with pytest.raises(ValueError, match="Training/validation/test dataset images"):
-        validate_upload_file(SimpleNamespace(filename="training-sample.jpg"))
+        validate_upload_file(SimpleNamespace(filename="training-sample.jpg", file=BytesIO(JPEG_BYTES)))
+
+
+def test_upload_file_validation_checks_image_signature() -> None:
+    validate_upload_file(SimpleNamespace(filename="trap.jpg", file=BytesIO(JPEG_BYTES)))
+    validate_upload_file(SimpleNamespace(filename="trap.png", file=BytesIO(PNG_BYTES)))
+    validate_upload_file(SimpleNamespace(filename="trap.webp", file=BytesIO(WEBP_BYTES)))
+
+    spoofed = BytesIO(b"not-an-image")
+    with pytest.raises(ValueError, match="content does not match"):
+        validate_upload_file(SimpleNamespace(filename="trap.jpg", file=spoofed))
+    assert spoofed.tell() == 0
 
 
 def test_upload_metadata_normalization_and_format_validation() -> None:

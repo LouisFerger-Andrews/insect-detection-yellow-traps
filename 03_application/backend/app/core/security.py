@@ -21,6 +21,7 @@ def hash_password(password: str) -> str:
 def create_access_token(subject: str, role: str) -> str:
     settings = get_settings()
     expires_delta = timedelta(minutes=settings.access_token_expire_minutes)
-    expire = datetime.now(timezone.utc) + expires_delta
-    payload: Dict[str, Any] = {'sub': subject, 'role': role, 'exp': expire}
+    issued_at = datetime.now(timezone.utc)
+    expire = issued_at + expires_delta
+    payload: Dict[str, Any] = {'sub': subject, 'role': role, 'type': 'access', 'iat': issued_at, 'exp': expire}
     return jwt.encode(payload, settings.secret_key, algorithm=ALGORITHM)

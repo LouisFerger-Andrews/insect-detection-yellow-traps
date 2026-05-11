@@ -30,3 +30,17 @@ Security fixes are prioritized for the current `main` branch.
 - Never commit raw user/sensor datasets under `04_modeling_experimental/data/raw`.
 - Rotate credentials immediately if exposure is suspected.
 - If secrets are committed, rewrite history and force push after remediation.
+
+## MVP Application Hardening
+
+The MVP API includes these baseline protections:
+
+- Passwords are stored with bcrypt hashes, never in plaintext.
+- API tokens are signed JWT access tokens with `exp`, `iat`, and token type claims.
+- Production-like environments must use a strong `SECRET_KEY`, non-default admin password, and explicit CORS origins.
+- Login and registration endpoints use basic in-memory throttling to reduce brute-force attempts.
+- API responses include browser security headers for MIME sniffing, clickjacking, referrer, permissions, and same-origin resource policy.
+- Uploads are constrained by extension, file size, batch size, image magic bytes, and upload-root path containment.
+- User-facing API errors hide raw server-side 5xx response bodies.
+
+Deployment still needs HTTPS termination, secret rotation, database/network firewalling, dependency vulnerability monitoring, backups, and environment-specific logging review. No application can be guaranteed impossible to hack; treat this policy as the current baseline and keep testing it as the deployment changes.

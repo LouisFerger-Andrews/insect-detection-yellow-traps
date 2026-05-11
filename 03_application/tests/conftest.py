@@ -15,7 +15,7 @@ for path in (BACKEND, REPO_ROOT):
         sys.path.insert(0, str(path))
 
 # Defaults needed for importing backend settings in tests.
-os.environ.setdefault("SECRET_KEY", "test-secret-key")
+os.environ.setdefault("SECRET_KEY", "test-secret-key-for-local-tests-32")
 os.environ.setdefault("POSTGRES_URL", "sqlite:///./test.db")
 os.environ.setdefault("NEO4J_URI", "bolt://localhost:7687")
 os.environ.setdefault("NEO4J_USER", "neo4j")

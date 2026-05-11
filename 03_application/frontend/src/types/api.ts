@@ -120,7 +120,6 @@ export type AnalyticsOverview = {
 export type ModelStats = {
   model: {
     weights_file: string;
-    weights_path: string;
     confidence_threshold: number;
     image_size: number;
   };
