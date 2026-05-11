@@ -18,7 +18,9 @@ describe('apiClient', () => {
     expect(String(url)).toContain('/health');
     const headers = new Headers(init?.headers);
     expect(headers.get('Authorization')).toBe('Bearer token-123');
+    expect(headers.get('Accept')).toBe('application/json');
     expect(headers.get('Content-Type')).toBe('application/json');
+    expect(init?.referrerPolicy).toBe('same-origin');
   });
 
   it('sends JSON body for POST/PATCH', async () => {
@@ -63,12 +65,25 @@ describe('apiClient', () => {
     const [, init] = fetchMock.mock.calls[0];
     const headers = new Headers(init?.headers);
     expect(headers.get('Authorization')).toBe('Bearer token-csv');
+    expect(headers.get('Accept')).toBe('text/csv, text/plain');
     expect(headers.get('Content-Type')).toBeNull();
   });
 
   it('throws api message for non-ok response', async () => {
     vi.spyOn(globalThis, 'fetch').mockResolvedValue(new Response('bad request', { status: 400 }));
     await expect(apiClient.get('/bad')).rejects.toThrow('bad request');
+  });
+
+  it('uses json detail errors and hides raw server errors', async () => {
+    vi.spyOn(globalThis, 'fetch')
+      .mockResolvedValueOnce(new Response(JSON.stringify({ detail: 'Invalid credentials' }), {
+        status: 401,
+        headers: { 'Content-Type': 'application/json' },
+      }))
+      .mockResolvedValueOnce(new Response('stack trace', { status: 500 }));
+
+    await expect(apiClient.get('/auth')).rejects.toThrow('Invalid credentials');
+    await expect(apiClient.get('/boom')).rejects.toThrow('Server error. Try again later.');
   });
 
   it('throws reachability message on fetch error', async () => {
