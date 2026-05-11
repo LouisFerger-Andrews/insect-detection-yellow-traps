@@ -120,6 +120,7 @@ describe('FieldMapManager', () => {
 
     fireEvent.change(screen.getByPlaceholderText('Search farm location'), { target: { value: 'fa' } });
     fireEvent.click(screen.getByRole('button', { name: 'Search' }));
+    await waitFor(() => expect(getMock).toHaveBeenCalledWith('/api/map/search?q=fa', 'token'));
     await waitFor(() => expect(screen.getByRole('button', { name: 'Test Farm' })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: 'Test Farm' }));
     await waitFor(() => expect(setViewMock).toHaveBeenCalled());
