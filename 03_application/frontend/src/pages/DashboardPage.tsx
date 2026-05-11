@@ -267,6 +267,7 @@ export default function DashboardPage() {
   const [insightStartDate, setInsightStartDate] = useState('');
   const [insightEndDate, setInsightEndDate] = useState('');
   const [insightMinDetections, setInsightMinDetections] = useState('');
+  const [insightMaxDetections, setInsightMaxDetections] = useState('');
   const [insightMinConfidence, setInsightMinConfidence] = useState('');
   const [insightBusy, setInsightBusy] = useState(false);
   const [exportBusy, setExportBusy] = useState(false);
@@ -322,6 +323,7 @@ export default function DashboardPage() {
     if (insightStartDate) parts.push(`start_date=${encodeURIComponent(insightStartDate)}`);
     if (insightEndDate) parts.push(`end_date=${encodeURIComponent(insightEndDate)}`);
     if (insightMinDetections) parts.push(`min_detections=${encodeURIComponent(insightMinDetections)}`);
+    if (insightMaxDetections) parts.push(`max_detections=${encodeURIComponent(insightMaxDetections)}`);
     if (insightMinConfidence) parts.push(`min_confidence=${encodeURIComponent(insightMinConfidence)}`);
     return parts.length > 0 ? `?${parts.join('&')}` : '';
   };
@@ -818,6 +820,14 @@ export default function DashboardPage() {
                   onChange={(event) => setInsightMinDetections(event.target.value)}
                   placeholder="Min detections"
                   aria-label="Minimum detections filter"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  value={insightMaxDetections}
+                  onChange={(event) => setInsightMaxDetections(event.target.value)}
+                  placeholder="Max detections"
+                  aria-label="Maximum detections filter"
                 />
                 <input
                   type="number"
