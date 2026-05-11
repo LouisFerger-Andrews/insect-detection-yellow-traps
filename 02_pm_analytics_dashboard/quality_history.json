@@ -279,5 +279,75 @@
       "failed": 0,
       "total": 2
     }
+  },
+  {
+    "timestamp": "2026-05-11T19:38:08Z",
+    "source": "github-actions-ci",
+    "branch": "develop",
+    "commit_sha": "2e8838d92c32e13e511d8f1ac66d1848ce3bce9a",
+    "run_id": "25692676175",
+    "total_checks": 4,
+    "passed_checks": 4,
+    "failed_checks": 0,
+    "pass_rate_pct": 100.0,
+    "checks": [
+      {
+        "name": "backend_pytest",
+        "status": "PASS",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "label": "Backend tests: pytest (03 application backend)",
+        "category": "backend_runtime"
+      },
+      {
+        "name": "frontend_vitest",
+        "status": "PASS",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "label": "Frontend tests: vitest (03 application frontend)",
+        "category": "frontend_runtime"
+      },
+      {
+        "name": "backend_container_build",
+        "status": "PASS",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "label": "Backend deployment build: docker image",
+        "category": "deployment"
+      },
+      {
+        "name": "frontend_container_build",
+        "status": "PASS",
+        "returncode": 0,
+        "stdout": "",
+        "stderr": "",
+        "label": "Frontend deployment build: docker image",
+        "category": "deployment"
+      }
+    ],
+    "backend_runtime_summary": {
+      "passed": 1,
+      "failed": 0,
+      "total": 1
+    },
+    "frontend_runtime_summary": {
+      "passed": 1,
+      "failed": 0,
+      "total": 1
+    },
+    "runtime_tests_summary": {
+      "passed_tests": 1,
+      "failed_tests": 0,
+      "total_tests": 1
+    },
+    "runtime_tests_pass_rate_pct": 100.0,
+    "deployment_summary": {
+      "passed": 2,
+      "failed": 0,
+      "total": 2
+    }
   }
 ]
