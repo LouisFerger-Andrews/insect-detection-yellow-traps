@@ -21,15 +21,21 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Validate sync secrets
+      - name: Check sync secrets
+        id: secrets_check
         env:
           TARGET_REPO: ${{ secrets.PM_DASHBOARD_TARGET_REPO }}
           SYNC_TOKEN: ${{ secrets.PM_DASHBOARD_SYNC_TOKEN }}
         run: |
-          test -n "$TARGET_REPO" || (echo "Missing secret: PM_DASHBOARD_TARGET_REPO (format owner/repo)" && exit 1)
-          test -n "$SYNC_TOKEN" || (echo "Missing secret: PM_DASHBOARD_SYNC_TOKEN (repo write PAT)" && exit 1)
+          if [ -z "$TARGET_REPO" ] || [ -z "$SYNC_TOKEN" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "Dashboard sync skipped: missing PM_DASHBOARD_TARGET_REPO and/or PM_DASHBOARD_SYNC_TOKEN."
+          else
+            echo "enabled=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Push subtree to target repo
+        if: ${{ steps.secrets_check.outputs.enabled == 'true' }}
         env:
           TARGET_REPO: ${{ secrets.PM_DASHBOARD_TARGET_REPO }}
           TARGET_BRANCH: ${{ secrets.PM_DASHBOARD_TARGET_BRANCH }}
