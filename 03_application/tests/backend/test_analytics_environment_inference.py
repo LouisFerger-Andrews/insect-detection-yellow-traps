@@ -207,6 +207,8 @@ def test_environment_overview_and_timeseries() -> None:
 def test_inference_service_get_model_and_run(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     weights = tmp_path / "model.pt"
     weights.write_text("mock")
+    image = tmp_path / "image.jpg"
+    image.write_bytes(b"fake-image")
 
     class FakeBox:
         def __init__(self) -> None:
@@ -229,7 +231,7 @@ def test_inference_service_get_model_and_run(tmp_path: Path, monkeypatch: pytest
     monkeypatch.setattr("app.services.inference_service.YOLO", lambda path: FakeModel())
 
     svc = InferenceService()
-    out = svc.run(tmp_path / "image.jpg")
+    out = svc.run(image)
     assert out[0]["class_id"] == 2
     assert out[0]["confidence"] == 0.91
     assert out[0]["bbox_xyxy"] == [1.0, 2.0, 3.0, 4.0]

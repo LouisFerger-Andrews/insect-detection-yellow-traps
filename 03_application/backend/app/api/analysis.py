@@ -69,13 +69,19 @@ def upload_range(
         resolved_field_id = field.id
         resolved_trap_code = trap_code or 'UNSPECIFIED'
 
+    for file in images:
+        try:
+            validate_upload_file(file)
+        except ValueError as exc:
+            logger.warning('Upload validation failed for user=%s file=%s: %s', current_user.id, file.filename, exc)
+            raise HTTPException(status_code=400, detail=str(exc)) from exc
+
     graph = GraphService()
 
     results: list[UploadResult] = []
     try:
         for idx, file in enumerate(images):
             try:
-                validate_upload_file(file)
                 saved_path = save_upload_file(upload_root, file)
                 detections = infer.run(saved_path)
             except ValueError as exc:

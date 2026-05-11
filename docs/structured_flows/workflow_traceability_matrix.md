@@ -46,7 +46,7 @@ Coverage status scale:
 | #19 | Implement validation and error handling for uploads | Closed | Done | Covered by WF-03 failure handling. |
 | #38 | Implement validation, error handling, and logging | Open | Partial | Suspected duplicate legacy item without labels/milestone. |
 | #39 | Implement validation, error handling, and logging | Open | Partial | Branch `feature/task-39-validation-error-logging` addresses core backend path. |
-| #41 | Test and document ingestion pipeline workflow | Open | Partial | Some coverage exists; full test evidence pending. |
+| #41 | Test and document ingestion pipeline workflow | Open | Done | End-to-end and invalid-batch coverage in `03_application/tests/backend/test_ingestion_pipeline_workflow.py`; workflow documented in `upload_ingestion_flow.md`. |
 | #74 | Test and document batch upload workflow | Open | Partial | Suspected duplicate with #75. |
 | #75 | Test and document batch upload workflow | Open | Partial | Documentation baseline added; test evidence pending. |
 | #81 | Test and document input standardisation and validation workflow | Open | Partial | Validation docs present; final test evidence pending. |
