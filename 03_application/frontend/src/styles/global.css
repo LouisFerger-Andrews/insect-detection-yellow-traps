@@ -173,6 +173,76 @@ button {
   min-width: 200px;
 }
 
+.insight-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 10px;
+  margin: 12px 0;
+}
+
+.insight-kpis div {
+  display: grid;
+  gap: 6px;
+  padding: 12px;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.insight-kpis span {
+  color: #475569;
+  font-size: 13px;
+}
+
+.insight-kpis strong {
+  color: #0f172a;
+  font-size: 20px;
+}
+
+.table-wrap {
+  overflow-x: auto;
+  margin-top: 12px;
+}
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 14px;
+}
+
+.data-table th,
+.data-table td {
+  padding: 8px 10px;
+  border-bottom: 1px solid #cbd5e1;
+  text-align: left;
+  vertical-align: top;
+}
+
+.data-table th {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.table-action {
+  margin-top: 0;
+  padding: 6px 8px;
+}
+
+.insight-detail {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 10px;
+  margin-top: 12px;
+  padding: 12px;
+  border: 1px solid #94a3b8;
+  border-radius: 8px;
+  background: #f8fafc;
+}
+
+.insight-detail .list {
+  grid-column: 1 / -1;
+}
+
 .map-menu-bar,
 .map-edit-bar {
   display: flex;

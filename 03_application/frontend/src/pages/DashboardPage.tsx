@@ -10,9 +10,11 @@ import type {
   FieldMapSummary,
   FieldTimeseries,
   FieldMapDetail,
+  InsightDashboard,
   ModelStats,
   TrapPoint,
   UploadBatchResponse,
+  UploadDetail,
   UploadSummary,
 } from '../types/api';
 
@@ -238,6 +240,8 @@ export default function DashboardPage() {
   const [uploads, setUploads] = useState<UploadSummary[]>([]);
   const [lastBatch, setLastBatch] = useState<UploadBatchResponse | null>(null);
   const [analytics, setAnalytics] = useState<AnalyticsOverview | null>(null);
+  const [insights, setInsights] = useState<InsightDashboard | null>(null);
+  const [insightDetail, setInsightDetail] = useState<UploadDetail | null>(null);
   const [modelStats, setModelStats] = useState<ModelStats | null>(null);
   const [environmentOverview, setEnvironmentOverview] = useState<EnvironmentOverview | null>(null);
   const [fieldOptions, setFieldOptions] = useState<FieldMapSummary[]>([]);
@@ -259,6 +263,13 @@ export default function DashboardPage() {
   const [chatYear, setChatYear] = useState<string>('all');
   const [chatRange, setChatRange] = useState<string>('all');
   const [envDataScope, setEnvDataScope] = useState<string>('all');
+  const [insightTrapFilter, setInsightTrapFilter] = useState('');
+  const [insightStartDate, setInsightStartDate] = useState('');
+  const [insightEndDate, setInsightEndDate] = useState('');
+  const [insightMinDetections, setInsightMinDetections] = useState('');
+  const [insightMinConfidence, setInsightMinConfidence] = useState('');
+  const [insightBusy, setInsightBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
   const [availableYears, setAvailableYears] = useState<number[]>([]);
   const [envBusy, setEnvBusy] = useState(false);
   const [envSyncFieldId, setEnvSyncFieldId] = useState('');
@@ -304,6 +315,17 @@ export default function DashboardPage() {
     return { allData: true };
   };
 
+  const buildInsightQuery = () => {
+    const parts: string[] = [];
+    if (envSyncFieldId) parts.push(`field_id=${encodeURIComponent(envSyncFieldId)}`);
+    if (insightTrapFilter.trim()) parts.push(`trap_code=${encodeURIComponent(insightTrapFilter.trim())}`);
+    if (insightStartDate) parts.push(`start_date=${encodeURIComponent(insightStartDate)}`);
+    if (insightEndDate) parts.push(`end_date=${encodeURIComponent(insightEndDate)}`);
+    if (insightMinDetections) parts.push(`min_detections=${encodeURIComponent(insightMinDetections)}`);
+    if (insightMinConfidence) parts.push(`min_confidence=${encodeURIComponent(insightMinConfidence)}`);
+    return parts.length > 0 ? `?${parts.join('&')}` : '';
+  };
+
   const loadUploads = async () => {
     if (!token) return;
     const uploadRows = await apiClient.get<UploadSummary[]>('/api/analysis/uploads', token);
@@ -326,6 +348,47 @@ export default function DashboardPage() {
     }
     if (chatYear !== 'all' && nextYears.length > 0 && !nextYears.includes(Number.parseInt(chatYear, 10))) {
       setChatYear('all');
+    }
+  };
+
+  const loadInsights = async () => {
+    if (!token) return;
+    setInsightBusy(true);
+    try {
+      const payload = await apiClient.get<InsightDashboard>(`/api/analytics/insights${buildInsightQuery()}`, token);
+      setInsights(payload);
+    } finally {
+      setInsightBusy(false);
+    }
+  };
+
+  const exportInsightsCsv = async () => {
+    if (!token) return;
+    setExportBusy(true);
+    setError('');
+    try {
+      const csv = await apiClient.getText(`/api/analytics/insights/export.csv${buildInsightQuery()}`, token);
+      const href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+      const link = document.createElement('a');
+      link.href = href;
+      link.download = 'insight-dashboard-export.csv';
+      link.click();
+      URL.revokeObjectURL(href);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to export insight data');
+    } finally {
+      setExportBusy(false);
+    }
+  };
+
+  const inspectInsightUpload = async (uploadId: number) => {
+    if (!token) return;
+    setError('');
+    try {
+      const payload = await apiClient.get<UploadDetail>(`/api/analysis/uploads/${uploadId}`, token);
+      setInsightDetail(payload);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to load image result');
     }
   };
 
@@ -391,7 +454,7 @@ export default function DashboardPage() {
 
   useEffect(() => {
     if (section !== 'analytics' || !token) return;
-    void Promise.all([loadAnalytics(), loadEnvironmentOverview(), loadFieldOptions()]).catch((err) => {
+    void Promise.all([loadAnalytics(), loadInsights(), loadEnvironmentOverview(), loadFieldOptions()]).catch((err) => {
       setError(err instanceof Error ? err.message : 'Failed to load analytics');
     });
   }, [section, token, envDataScope, envSyncFieldId]);
@@ -715,6 +778,188 @@ export default function DashboardPage() {
               Scope: <strong>{analytics?.scope ?? '-'}</strong>
             </p>
             <p>Use the charts below to compare weekly population signals with weather and stress indicators.</p>
+            <div className="card">
+              <h3>Insight Dashboard</h3>
+              <p>
+                Review image-level prediction results, operational KPIs, trends, and export-ready monitoring data from stored detections.
+              </p>
+              <div className="map-toolbar">
+                <select value={envSyncFieldId} onChange={(event) => setEnvSyncFieldId(event.target.value)}>
+                  <option value="">All accessible fields</option>
+                  {fieldOptions.map((field) => (
+                    <option key={`insight-field-${field.id}`} value={field.id}>
+                      {field.name}
+                    </option>
+                  ))}
+                </select>
+                <input
+                  type="text"
+                  value={insightTrapFilter}
+                  onChange={(event) => setInsightTrapFilter(event.target.value)}
+                  placeholder="Trap code"
+                  aria-label="Insight trap code filter"
+                />
+                <input
+                  type="date"
+                  value={insightStartDate}
+                  onChange={(event) => setInsightStartDate(event.target.value)}
+                  aria-label="Insight start date"
+                />
+                <input
+                  type="date"
+                  value={insightEndDate}
+                  onChange={(event) => setInsightEndDate(event.target.value)}
+                  aria-label="Insight end date"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  value={insightMinDetections}
+                  onChange={(event) => setInsightMinDetections(event.target.value)}
+                  placeholder="Min detections"
+                  aria-label="Minimum detections filter"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={insightMinConfidence}
+                  onChange={(event) => setInsightMinConfidence(event.target.value)}
+                  placeholder="Min confidence"
+                  aria-label="Minimum confidence filter"
+                />
+                <button type="button" disabled={insightBusy} onClick={() => void loadInsights()}>
+                  {insightBusy ? 'Loading Insights...' : 'Apply Filters'}
+                </button>
+                <button type="button" disabled={exportBusy || insightBusy} onClick={() => void exportInsightsCsv()}>
+                  {exportBusy ? 'Exporting...' : 'Export CSV'}
+                </button>
+              </div>
+              <div className="insight-kpis">
+                <div>
+                  <span>Processed Images</span>
+                  <strong>{insights?.kpis.processed_images ?? 0}</strong>
+                </div>
+                <div>
+                  <span>Total Detections</span>
+                  <strong>{insights?.kpis.total_detections ?? 0}</strong>
+                </div>
+                <div>
+                  <span>Avg Detections / Image</span>
+                  <strong>{fmt(insights?.kpis.avg_detections_per_image, 2)}</strong>
+                </div>
+                <div>
+                  <span>Highest Field</span>
+                  <strong>{insights?.kpis.highest_activity_field?.field_name ?? '-'}</strong>
+                </div>
+                <div>
+                  <span>Highest Trap</span>
+                  <strong>{insights?.kpis.highest_activity_trap?.trap_code ?? '-'}</strong>
+                </div>
+              </div>
+              <p>
+                Export context: dataset={insights?.context.dataset_version ?? '-'}, model={insights?.context.model_version ?? '-'}
+              </p>
+              <div className="grid-2">
+                <SimpleBarChart
+                  title="Detection Trend Over Time"
+                  labels={(insights?.trend ?? []).map((row) => row.capture_date.slice(5))}
+                  values={(insights?.trend ?? []).map((row) => row.detections)}
+                  xLabel="Date"
+                  yLabel="Detections"
+                  color={BLUE_SCALE.b700}
+                />
+                <SimpleBarChart
+                  title="Field Comparison"
+                  labels={(insights?.comparisons.by_field ?? []).slice(0, 10).map((row) => row.field_name)}
+                  values={(insights?.comparisons.by_field ?? []).slice(0, 10).map((row) => row.detections)}
+                  xLabel="Field"
+                  yLabel="Detections"
+                  color={BLUE_SCALE.b600}
+                />
+              </div>
+              <div className="grid-2">
+                <SimpleBarChart
+                  title="Trap Comparison"
+                  labels={(insights?.comparisons.by_trap ?? []).slice(0, 10).map((row) => row.trap_code)}
+                  values={(insights?.comparisons.by_trap ?? []).slice(0, 10).map((row) => row.detections)}
+                  xLabel="Trap"
+                  yLabel="Detections"
+                  color={BLUE_SCALE.b500}
+                />
+                <SimpleBarChart
+                  title="Avg Detections Per Trap Image"
+                  labels={(insights?.comparisons.by_trap ?? []).slice(0, 10).map((row) => row.trap_code)}
+                  values={(insights?.comparisons.by_trap ?? []).slice(0, 10).map((row) => row.avg_detections_per_image)}
+                  xLabel="Trap"
+                  yLabel="Avg / image"
+                  color={BLUE_SCALE.b800}
+                />
+              </div>
+              <div className="table-wrap">
+                <table className="data-table">
+                  <thead>
+                    <tr>
+                      <th>Image</th>
+                      <th>Field</th>
+                      <th>Trap</th>
+                      <th>Date</th>
+                      <th>Detections</th>
+                      <th>Confidence</th>
+                      <th>Predictions</th>
+                      <th>Inspect</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(insights?.results ?? []).slice(0, 100).map((row) => (
+                      <tr key={row.upload_id}>
+                        <td>{row.image_path.split('/').at(-1) ?? row.image_path}</td>
+                        <td>{row.field_name}</td>
+                        <td>{row.trap_id ? `${row.trap_code} (${row.trap_id})` : row.trap_code}</td>
+                        <td>{row.capture_date}</td>
+                        <td>{row.detection_count}</td>
+                        <td>{fmt(row.confidence_avg, 2)}</td>
+                        <td>{row.detections.length}</td>
+                        <td>
+                          <button type="button" className="link-btn table-action" onClick={() => void inspectInsightUpload(row.upload_id)}>
+                            Open
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                    {(insights?.results ?? []).length === 0 ? (
+                      <tr>
+                        <td colSpan={8}>No image-level results match the selected filters.</td>
+                      </tr>
+                    ) : null}
+                  </tbody>
+                </table>
+              </div>
+              {insightDetail ? (
+                <div className="insight-detail" role="region" aria-label="Selected image prediction detail">
+                  <div>
+                    <h4>Image Result #{insightDetail.id}</h4>
+                    <p>
+                      {insightDetail.field_id} | {insightDetail.trap_code} | {insightDetail.capture_date}
+                    </p>
+                    <p>{insightDetail.image_path}</p>
+                  </div>
+                  <button type="button" className="link-btn" onClick={() => setInsightDetail(null)}>
+                    Close
+                  </button>
+                  <ul className="list">
+                    {insightDetail.detections.map((detection, index) => (
+                      <li key={`${insightDetail.id}-${index}`}>
+                        class={detection.class_id}, confidence={detection.confidence.toFixed(3)}, bbox=[
+                        {detection.bbox_xyxy.map((value) => value.toFixed(1)).join(', ')}]
+                      </li>
+                    ))}
+                    {insightDetail.detections.length === 0 ? <li>No detections stored for this image.</li> : null}
+                  </ul>
+                </div>
+              ) : null}
+            </div>
             <div className="card">
               <h3>Environmental Data (Field Weather + Derived Metrics)</h3>
               <div className="map-toolbar">
