@@ -159,6 +159,83 @@ def test_upload_range_rejects_invalid_batch_before_storage(
     assert not upload_dir.exists()
 
 
+def test_upload_range_rejects_oversized_batch_before_processing(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    db_session: Session,
+    ingestion_user_and_field: tuple[User, FieldMap],
+) -> None:
+    user, field = ingestion_user_and_field
+
+    class UnexpectedInferenceService:
+        def run(self, image_path: Path):  # noqa: ANN201
+            raise AssertionError("inference should not run for oversized batches")
+
+    monkeypatch.setattr(analysis_api, "get_settings", lambda: SimpleNamespace(upload_dir=str(tmp_path / "uploads")))
+    monkeypatch.setattr(analysis_api, "InferenceService", UnexpectedInferenceService)
+
+    with pytest.raises(HTTPException) as exc:
+        analysis_api.upload_range(
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 8),
+            field_id=field.id,
+            trap_id=None,
+            trap_code="FIELD_BATCH",
+            images=[_upload(f"capture-{idx}.jpg") for idx in range(51)],
+            db=db_session,
+            current_user=user,
+        )
+
+    assert exc.value.status_code == 400
+    assert exc.value.detail == "A batch can contain at most 50 images"
+    assert db_session.scalars(select(TrapUpload)).all() == []
+
+
+def test_upload_range_rolls_back_sql_when_batch_processing_fails(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    db_session: Session,
+    ingestion_user_and_field: tuple[User, FieldMap],
+) -> None:
+    user, field = ingestion_user_and_field
+    upload_dir = tmp_path / "uploads"
+    seen: list[str] = []
+
+    class FailingInferenceService:
+        def run(self, image_path: Path):  # noqa: ANN201
+            seen.append(image_path.name)
+            if len(seen) == 2:
+                raise RuntimeError("model failed")
+            return [{"bbox_xyxy": [1.0, 2.0, 3.0, 4.0], "confidence": 0.8, "class_id": 0}]
+
+    class FakeGraphService:
+        def link_upload_to_field(self, *args, **kwargs):  # noqa: ANN002, ANN003
+            raise AssertionError("graph linking should not run when processing fails")
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(analysis_api, "get_settings", lambda: SimpleNamespace(upload_dir=str(upload_dir)))
+    monkeypatch.setattr(analysis_api, "InferenceService", FailingInferenceService)
+    monkeypatch.setattr(analysis_api, "GraphService", FakeGraphService)
+
+    with pytest.raises(HTTPException) as exc:
+        analysis_api.upload_range(
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 2),
+            field_id=field.id,
+            trap_id=None,
+            trap_code="FIELD_BATCH",
+            images=[_upload("capture-a.jpg"), _upload("capture-b.jpg")],
+            db=db_session,
+            current_user=user,
+        )
+
+    assert exc.value.status_code == 500
+    assert db_session.scalars(select(TrapUpload)).all() == []
+    assert db_session.scalars(select(Detection)).all() == []
+
+
 def test_upload_range_rejects_inconsistent_trap_metadata(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,

@@ -10,6 +10,7 @@ from fastapi import UploadFile
 
 ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
 MAX_UPLOAD_SIZE_MB = 20
+MAX_BATCH_UPLOAD_IMAGES = 50
 _DATASET_FILENAME_MARKER = re.compile(r"(^|[^a-z])(train|training|valid|validation|test)([^a-z]|$)", re.IGNORECASE)
 IDENTIFIER_PATTERN = re.compile(r'^[A-Za-z0-9_-]+$')
 TRAP_CODE_PATTERN = re.compile(r'^[A-Za-z0-9 _-]+$')

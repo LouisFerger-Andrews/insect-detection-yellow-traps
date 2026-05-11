@@ -20,6 +20,7 @@ from app.services.graph_service import GraphService
 from app.services.environment_service import infer_sync_start_date, sync_environment_for_field
 from app.services.inference_service import InferenceService
 from app.services.upload_service import (
+    MAX_BATCH_UPLOAD_IMAGES,
     allocate_capture_dates,
     normalize_optional_text,
     save_upload_file,
@@ -52,6 +53,8 @@ def upload_range(
         raise HTTPException(status_code=400, detail='start_date must be before or equal to end_date')
     if not images:
         raise HTTPException(status_code=400, detail='At least one image is required')
+    if len(images) > MAX_BATCH_UPLOAD_IMAGES:
+        raise HTTPException(status_code=400, detail=f'A batch can contain at most {MAX_BATCH_UPLOAD_IMAGES} images')
 
     try:
         if field_id:
@@ -102,12 +105,15 @@ def upload_range(
             raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     graph = GraphService()
-
+    saved_paths: list[Path] = []
+    processed_uploads: list[tuple[TrapUpload, UploadFile, list[dict]]] = []
+    committed = False
     results: list[UploadResult] = []
     try:
         for idx, file in enumerate(images):
             try:
                 saved_path = save_upload_file(upload_root, file)
+                saved_paths.append(saved_path)
                 detections = infer.run(saved_path)
             except ValueError as exc:
                 logger.warning('Upload validation failed for user=%s file=%s: %s', current_user.id, file.filename, exc)
@@ -141,8 +147,12 @@ def upload_range(
                         y2=bbox[3],
                     )
                 )
+            processed_uploads.append((upload, file, detections))
 
-            db.commit()
+        db.commit()
+        committed = True
+
+        for upload, file, detections in processed_uploads:
             db.refresh(upload)
 
             graph.link_upload_to_field(resolved_field_id, upload.id, upload.capture_date, upload.detection_count)
@@ -168,9 +178,15 @@ def upload_range(
             )
     except HTTPException:
         db.rollback()
+        if not committed:
+            for path in saved_paths:
+                path.unlink(missing_ok=True)
         raise
     except Exception as exc:
         db.rollback()
+        if not committed:
+            for path in saved_paths:
+                path.unlink(missing_ok=True)
         logger.exception(
             'Upload ingestion failed user=%s field=%s trap=%s file_count=%s',
             current_user.id,
