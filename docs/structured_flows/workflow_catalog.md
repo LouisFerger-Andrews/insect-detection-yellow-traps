@@ -28,6 +28,12 @@ This document lists the major operational workflows in the insect identification
 - Related docs: `upload_ingestion_flow.md`, `workflow_traceability_matrix.md`, plus metadata docs in `docs/metadata/` (other branch).
 - Related issue cluster: `#21`, `#22`-`#27`, `#49`, `#58`-`#62`, `#67`-`#70`.
 
+## WF-04A Storage Organization
+
+- Scope: upload file hierarchy, stored path naming, SQL-to-file traceability, detection linkage.
+- Detailed doc: `storage_organization_flow.md`.
+- Related issue cluster: `#43`, `#44`-`#47`.
+
 ## WF-05 Inference and Detection
 
 - Scope: model loading, prediction execution, detection serialization.

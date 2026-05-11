@@ -14,12 +14,20 @@ MAX_BATCH_UPLOAD_IMAGES = 50
 _DATASET_FILENAME_MARKER = re.compile(r"(^|[^a-z])(train|training|valid|validation|test)([^a-z]|$)", re.IGNORECASE)
 IDENTIFIER_PATTERN = re.compile(r'^[A-Za-z0-9_-]+$')
 TRAP_CODE_PATTERN = re.compile(r'^[A-Za-z0-9 _-]+$')
+STORAGE_SEGMENT_PATTERN = re.compile(r'[^A-Za-z0-9_-]+')
 
 
 def secure_filename(name: str) -> str:
     safe = ''.join(ch for ch in name if ch.isalnum() or ch in ('.', '-', '_'))
     safe = safe.lstrip('.')
     return safe or 'image.jpg'
+
+
+def secure_storage_segment(value: str | None, fallback: str = 'unassigned') -> str:
+    normalized = (value or '').strip()
+    normalized = re.sub(r'\s+', '-', normalized)
+    safe = STORAGE_SEGMENT_PATTERN.sub('', normalized).strip('-_')
+    return safe or fallback
 
 
 def allocate_capture_dates(start_date: date, end_date: date, count: int) -> List[date]:
@@ -88,10 +96,33 @@ def validate_trap_code(value: str) -> None:
         raise ValueError('trap_code must contain only letters, numbers, spaces, underscores, or hyphens')
 
 
-def save_upload_file(upload_root: Path, upload: UploadFile) -> Path:
-    upload_root.mkdir(parents=True, exist_ok=True)
+def build_upload_storage_path(upload_root: Path, field_id: str, trap_code: str, capture_date: date) -> Path:
+    return (
+        upload_root
+        / secure_storage_segment(field_id, 'field-unknown')
+        / f'{capture_date:%Y}'
+        / f'{capture_date:%m}'
+        / f'{capture_date:%d}'
+        / secure_storage_segment(trap_code, 'trap-unknown')
+    )
+
+
+def save_upload_file(
+    upload_root: Path,
+    upload: UploadFile,
+    *,
+    field_id: str | None = None,
+    trap_code: str | None = None,
+    capture_date: date | None = None,
+) -> Path:
+    destination_dir = (
+        build_upload_storage_path(upload_root, field_id, trap_code, capture_date)
+        if field_id and trap_code and capture_date
+        else upload_root
+    )
+    destination_dir.mkdir(parents=True, exist_ok=True)
     filename = f'{uuid4().hex}_{secure_filename(upload.filename or "upload.jpg")}'
-    destination = upload_root / filename
+    destination = destination_dir / filename
     max_bytes = MAX_UPLOAD_SIZE_MB * 1024 * 1024
     size_bytes = 0
     try:

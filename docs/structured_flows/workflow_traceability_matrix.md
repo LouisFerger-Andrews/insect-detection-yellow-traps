@@ -13,6 +13,7 @@ Coverage status scale:
 | #21 | [Feature][MVP] Metadata Management | Open | Partial | `workflow_catalog.md` (WF-04) |
 | #35 | [Feature][MVP] Data Ingestion Pipeline | Open | Partial | `upload_ingestion_flow.md` |
 | #42 | [Feature][MVP] Data Validation and Error Handling | Open | Partial | `upload_ingestion_flow.md`, `inference_flow.md` |
+| #43 | [Feature][MVP] Storage Structure and Organization | Open | Done | `storage_organization_flow.md` |
 | #49 | [Feature][PoC] Minimal Metadata Capture | Open | Partial | `workflow_catalog.md` (WF-04) |
 | #50 | [Feature][PoC] Manual Data Submission Workflow | Closed | Done | `upload_ingestion_flow.md` |
 | #51 | [Feature][MVP] Structured Upload Workflow with Metadata | Open | Done | `upload_ingestion_flow.md`, `workflow_catalog.md`, `docs/metadata/rules/structured-upload-format.md` |
@@ -38,6 +39,15 @@ Coverage status scale:
 | #68 | Implement structured input interface for image and metadata upload | Closed | Done | Upload UI collects field/trap mode, date range, and image files; exact-trap and field-level paths covered by frontend tests. |
 | #69 | Enforce validation and required fields in upload workflow | Closed | Done | Frontend and backend enforce required metadata, image constraints, trap consistency, and date rules before persistence. |
 | #70 | Test and document structured upload workflow | Open | Done | Exact-trap structured metadata, field-level batch metadata, frontend submission shape, and validation failures covered in tests and workflow docs. |
+
+## Storage organization task chain
+
+| Issue | Title | State | Coverage | Notes |
+|---|---|---|---|---|
+| #44 | Design storage structure and organisation model | Open | Done | Hierarchical model documented as `<UPLOAD_DIR>/<field_id>/<YYYY>/<MM>/<DD>/<trap_code>/<uuid>_<filename>`. |
+| #45 | Define and implement naming conventions for stored data | Open | Done | Storage segments and filenames are sanitized in `upload_service.py`; documented in `storage_organization_flow.md`. |
+| #46 | Apply storage structure across images, metadata, and predictions | Open | Done | Uploads persist `image_path`, detections link by `upload_id`, and graph links use committed upload metadata. |
+| #47 | Test and document storage structure and organisation | Open | Done | Service and ingestion tests verify hierarchy, SQL path traceability, detections, and graph linkage. |
 
 ## Input standardisation task chain
 

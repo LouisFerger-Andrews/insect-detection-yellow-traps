@@ -11,6 +11,7 @@ pytest.importorskip("fastapi")
 
 from app.services.upload_service import (
     allocate_capture_dates,
+    build_upload_storage_path,
     normalize_optional_text,
     save_upload_file,
     secure_filename,
@@ -39,6 +40,24 @@ def test_save_upload_file_persists_content(tmp_path: Path) -> None:
     assert saved.exists()
     assert saved.read_bytes() == content
     assert saved.name.endswith("_trap.jpg")
+
+
+def test_save_upload_file_uses_hierarchical_storage_context(tmp_path: Path) -> None:
+    content = b"abc123"
+    upload = SimpleNamespace(filename="../Trap Image 01.JPG", file=BytesIO(content))
+    saved = save_upload_file(
+        tmp_path,
+        upload,
+        field_id="field-1",
+        trap_code="North Edge",
+        capture_date=date(2026, 5, 4),
+    )
+
+    assert saved.exists()
+    assert saved.read_bytes() == content
+    assert saved.parent == tmp_path / "field-1" / "2026" / "05" / "04" / "North-Edge"
+    assert saved.name.endswith("_TrapImage01.JPG")
+    assert build_upload_storage_path(tmp_path, "field-1", "North Edge", date(2026, 5, 4)).samefile(saved.parent)
 
 
 def test_upload_file_validation_rejects_unsupported_and_dataset_names() -> None:

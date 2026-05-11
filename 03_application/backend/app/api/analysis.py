@@ -118,7 +118,13 @@ def upload_range(
     try:
         for idx, file in enumerate(images):
             try:
-                saved_path = save_upload_file(upload_root, file)
+                saved_path = save_upload_file(
+                    upload_root,
+                    file,
+                    field_id=resolved_field_id,
+                    trap_code=resolved_trap_code,
+                    capture_date=resolved_capture_dates[idx],
+                )
                 saved_paths.append(saved_path)
                 detections = infer.run(saved_path)
             except ValueError as exc:

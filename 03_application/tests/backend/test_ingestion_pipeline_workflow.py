@@ -98,7 +98,7 @@ def test_upload_range_runs_ingestion_end_to_end(
 
     uploads = db_session.scalars(select(TrapUpload).order_by(TrapUpload.capture_date)).all()
     detections = db_session.scalars(select(Detection).order_by(Detection.upload_id, Detection.class_id)).all()
-    saved_files = sorted(upload_dir.iterdir())
+    saved_files = sorted(path for path in upload_dir.rglob("*") if path.is_file())
 
     assert response.total_images == 2
     assert [result.capture_date for result in response.results] == [date(2026, 1, 1), date(2026, 1, 8)]
@@ -109,6 +109,9 @@ def test_upload_range_runs_ingestion_end_to_end(
     assert len(detections) == 4
     assert len(saved_files) == 2
     assert all(path.name.endswith(("_trap-a.jpg", "_trap-b.png")) for path in saved_files)
+    assert saved_files[0].parts[-6:-1] == ("field-ingestion", "2026", "01", "01", "R01-P01")
+    assert saved_files[1].parts[-6:-1] == ("field-ingestion", "2026", "01", "08", "R01-P01")
+    assert [Path(upload.image_path) for upload in uploads] == saved_files
     assert graph_calls[:2] == [
         (field.id, uploads[0].id, date(2026, 1, 1), 2),
         (field.id, uploads[1].id, date(2026, 1, 8), 2),
@@ -177,6 +180,8 @@ def test_upload_range_persists_structured_exact_trap_metadata(
     assert upload.trap_id == trap.id
     assert upload.trap_code == "North Edge"
     assert upload.capture_date == date(2026, 5, 1)
+    assert Path(upload.image_path).parts[-6:-1] == ("field-ingestion", "2026", "05", "01", "North-Edge")
+    assert Path(upload.image_path).exists()
     assert upload.detection_count == 1
     assert round(upload.confidence_avg, 2) == 0.75
     assert detection.upload_id == upload.id
