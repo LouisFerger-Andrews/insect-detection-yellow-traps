@@ -25,6 +25,7 @@ def _apply_insight_filters(
     start_date: date | None,
     end_date: date | None,
     min_detections: int | None,
+    max_detections: int | None,
     min_confidence: float | None,
 ):
     if current_user.role != 'admin':
@@ -39,6 +40,8 @@ def _apply_insight_filters(
         query = query.filter(TrapUpload.capture_date <= end_date)
     if min_detections is not None:
         query = query.filter(TrapUpload.detection_count >= min_detections)
+    if max_detections is not None:
+        query = query.filter(TrapUpload.detection_count <= max_detections)
     if min_confidence is not None:
         query = query.filter(TrapUpload.confidence_avg >= min_confidence)
     return query
@@ -63,10 +66,13 @@ def _insight_payload(
     start_date: date | None,
     end_date: date | None,
     min_detections: int | None,
+    max_detections: int | None,
     min_confidence: float | None,
 ):
     if start_date is not None and end_date is not None and start_date > end_date:
         raise HTTPException(status_code=400, detail='start_date must be before or equal to end_date')
+    if min_detections is not None and max_detections is not None and min_detections > max_detections:
+        raise HTTPException(status_code=400, detail='min_detections must be less than or equal to max_detections')
     _validate_field_access(db, field_id, current_user)
 
     base_query = apply_production_upload_filter(
@@ -81,6 +87,7 @@ def _insight_payload(
             start_date=start_date,
             end_date=end_date,
             min_detections=min_detections,
+            max_detections=max_detections,
             min_confidence=min_confidence,
         )
         .order_by(TrapUpload.capture_date.desc(), TrapUpload.id.desc())
@@ -143,6 +150,7 @@ def _insight_payload(
                 'start_date': start_date.isoformat() if start_date else None,
                 'end_date': end_date.isoformat() if end_date else None,
                 'min_detections': min_detections,
+                'max_detections': max_detections,
                 'min_confidence': min_confidence,
             },
         },
@@ -190,6 +198,7 @@ def insight_dashboard(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     min_detections: int | None = Query(default=None, ge=0),
+    max_detections: int | None = Query(default=None, ge=0),
     min_confidence: float | None = Query(default=None, ge=0.0, le=1.0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -202,6 +211,7 @@ def insight_dashboard(
         start_date=start_date,
         end_date=end_date,
         min_detections=min_detections,
+        max_detections=max_detections,
         min_confidence=min_confidence,
     )
 
@@ -213,6 +223,7 @@ def export_insight_dashboard_csv(
     start_date: date | None = Query(default=None),
     end_date: date | None = Query(default=None),
     min_detections: int | None = Query(default=None, ge=0),
+    max_detections: int | None = Query(default=None, ge=0),
     min_confidence: float | None = Query(default=None, ge=0.0, le=1.0),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
@@ -225,6 +236,7 @@ def export_insight_dashboard_csv(
         start_date=start_date,
         end_date=end_date,
         min_detections=min_detections,
+        max_detections=max_detections,
         min_confidence=min_confidence,
     )
     output = StringIO()
