@@ -19,7 +19,14 @@ from app.schemas.upload import DetectionResponse, UploadBatchResponse, UploadRes
 from app.services.graph_service import GraphService
 from app.services.environment_service import infer_sync_start_date, sync_environment_for_field
 from app.services.inference_service import InferenceService
-from app.services.upload_service import allocate_capture_dates, save_upload_file, validate_upload_file
+from app.services.upload_service import (
+    allocate_capture_dates,
+    normalize_optional_text,
+    save_upload_file,
+    validate_identifier,
+    validate_trap_code,
+    validate_upload_file,
+)
 from app.services.upload_visibility import apply_production_upload_filter
 
 router = APIRouter(prefix='/api/analysis', tags=['analysis'])
@@ -37,10 +44,24 @@ def upload_range(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_user),
 ):
+    field_id = normalize_optional_text(field_id)
+    trap_id = normalize_optional_text(trap_id)
+    trap_code = normalize_optional_text(trap_code)
+
     if start_date > end_date:
         raise HTTPException(status_code=400, detail='start_date must be before or equal to end_date')
     if not images:
         raise HTTPException(status_code=400, detail='At least one image is required')
+
+    try:
+        if field_id:
+            validate_identifier(field_id, 'field_id')
+        if trap_id:
+            validate_identifier(trap_id, 'trap_id')
+        if trap_code:
+            validate_trap_code(trap_code)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
 
     capture_dates = allocate_capture_dates(start_date, end_date, len(images))
     settings = get_settings()
@@ -56,8 +77,12 @@ def upload_range(
             raise HTTPException(status_code=404, detail='Field not found')
         if current_user.role != 'admin' and field.owner_user_id != current_user.id:
             raise HTTPException(status_code=403, detail='Forbidden')
+        if field_id and field_id != field.id:
+            raise HTTPException(status_code=400, detail='field_id does not match selected trap')
         resolved_field_id = field.id
         resolved_trap_code = trap.custom_name or trap.code
+        if trap_code and trap_code != resolved_trap_code:
+            raise HTTPException(status_code=400, detail='trap_code does not match selected trap')
     else:
         if not field_id:
             raise HTTPException(status_code=400, detail='field_id is required when trap_id is not provided')

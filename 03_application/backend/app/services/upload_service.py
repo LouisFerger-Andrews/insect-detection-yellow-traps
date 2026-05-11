@@ -11,6 +11,8 @@ from fastapi import UploadFile
 ALLOWED_IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp'}
 MAX_UPLOAD_SIZE_MB = 20
 _DATASET_FILENAME_MARKER = re.compile(r"(^|[^a-z])(train|training|valid|validation|test)([^a-z]|$)", re.IGNORECASE)
+IDENTIFIER_PATTERN = re.compile(r'^[A-Za-z0-9_-]+$')
+TRAP_CODE_PATTERN = re.compile(r'^[A-Za-z0-9 _-]+$')
 
 
 def secure_filename(name: str) -> str:
@@ -45,6 +47,27 @@ def validate_upload_file(upload: UploadFile) -> None:
     if suffix not in ALLOWED_IMAGE_EXTENSIONS:
         allowed = ', '.join(sorted(ALLOWED_IMAGE_EXTENSIONS))
         raise ValueError(f'Unsupported image type "{suffix}". Allowed: {allowed}')
+
+
+def normalize_optional_text(value: str | None) -> str | None:
+    if value is None:
+        return None
+    normalized = value.strip()
+    return normalized or None
+
+
+def validate_identifier(value: str, field_name: str) -> None:
+    if len(value) > 64:
+        raise ValueError(f'{field_name} must be 64 characters or fewer')
+    if not IDENTIFIER_PATTERN.fullmatch(value):
+        raise ValueError(f'{field_name} must contain only letters, numbers, underscores, or hyphens')
+
+
+def validate_trap_code(value: str) -> None:
+    if len(value) > 64:
+        raise ValueError('trap_code must be 64 characters or fewer')
+    if not TRAP_CODE_PATTERN.fullmatch(value):
+        raise ValueError('trap_code must contain only letters, numbers, spaces, underscores, or hyphens')
 
 
 def save_upload_file(upload_root: Path, upload: UploadFile) -> Path:
