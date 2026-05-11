@@ -207,7 +207,7 @@ describe('DashboardPage', () => {
 
     const uploadButton = screen.getByRole('button', { name: 'Upload + Run Model' });
     fireEvent.submit(uploadButton.closest('form')!);
-    await waitFor(() => expect(screen.getByText('Select at least one image')).toBeInTheDocument());
+    await waitFor(() => expect(screen.getAllByText('Select a trap marker on the map first.').length).toBeGreaterThan(0));
 
     fireEvent.click(screen.getByRole('button', { name: 'Select Trap' }));
     await waitFor(() => expect(screen.getByText('Trap 1')).toBeInTheDocument());
@@ -221,6 +221,27 @@ describe('DashboardPage', () => {
 
     fireEvent.submit(uploadButton.closest('form')!);
     await waitFor(() => expect(postFormMock).toHaveBeenCalledWith('/api/analysis/upload-range', expect.any(FormData), 'token-1'));
+  });
+
+  it('blocks non-standard upload files before submission', async () => {
+    render(<DashboardPage />);
+
+    fireEvent.click(screen.getByRole('button', { name: /Upload Trap Images/i }));
+    await waitFor(() => expect(screen.getByText('Upload Trap Images to Selected Trap')).toBeInTheDocument());
+    fireEvent.click(screen.getByRole('button', { name: 'Select Trap' }));
+    await waitFor(() => expect(screen.getByText('Trap 1')).toBeInTheDocument());
+
+    fireEvent.change(screen.getByLabelText('Start Date'), { target: { value: '2026-04-01' } });
+    fireEvent.change(screen.getByLabelText('End Date'), { target: { value: '2026-04-02' } });
+    const file = new File(['img'], 'training-sample.gif', { type: 'image/gif' });
+    const imagesInput = screen.getByLabelText('Images') as HTMLInputElement;
+    Object.defineProperty(imagesInput, 'files', { value: [file] });
+    fireEvent.change(imagesInput);
+
+    expect(screen.getByText('training-sample.gif: image must be JPG, PNG, or WEBP.')).toBeInTheDocument();
+    expect(screen.getByText('training-sample.gif: training, validation, and test dataset files cannot be uploaded.')).toBeInTheDocument();
+    fireEvent.submit(screen.getByRole('button', { name: 'Upload + Run Model' }).closest('form')!);
+    expect(postFormMock).not.toHaveBeenCalled();
   });
 
   it('handles exploratory validation and backend error response', async () => {

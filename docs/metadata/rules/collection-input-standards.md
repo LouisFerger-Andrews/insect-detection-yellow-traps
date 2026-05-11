@@ -39,3 +39,10 @@ The API resolves `field_id` and `trap_code` from `trap_id` when a trap is provid
 - Frontend validation blocks submission before network upload when required inputs, dates, or file formats are invalid.
 - Backend validation returns HTTP 400 with a clear reason when submitted data violates the standard.
 - Internal storage, inference, and integration failures return a controlled HTTP 500 and are logged server-side.
+
+## Automated coverage
+
+- `03_application/frontend/src/utils/__tests__/uploadValidation.test.ts` verifies frontend validation for valid uploads, date order, unsupported extensions, dataset filenames, empty files, and missing trap context.
+- `03_application/frontend/src/pages/__tests__/DashboardPage.test.tsx` verifies the upload form blocks non-standard files before submission.
+- `03_application/tests/backend/test_upload_service.py` verifies backend upload file, identifier, and trap-code validation helpers.
+- `03_application/tests/backend/test_ingestion_pipeline_workflow.py` verifies invalid batches and inconsistent trap metadata do not reach storage or inference.

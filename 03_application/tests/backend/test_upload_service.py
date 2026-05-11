@@ -9,7 +9,15 @@ import pytest
 
 pytest.importorskip("fastapi")
 
-from app.services.upload_service import allocate_capture_dates, save_upload_file, secure_filename
+from app.services.upload_service import (
+    allocate_capture_dates,
+    normalize_optional_text,
+    save_upload_file,
+    secure_filename,
+    validate_identifier,
+    validate_trap_code,
+    validate_upload_file,
+)
 
 
 def test_secure_filename_strips_unsafe_chars() -> None:
@@ -31,3 +39,25 @@ def test_save_upload_file_persists_content(tmp_path: Path) -> None:
     assert saved.exists()
     assert saved.read_bytes() == content
     assert saved.name.endswith("_trap.jpg")
+
+
+def test_upload_file_validation_rejects_unsupported_and_dataset_names() -> None:
+    with pytest.raises(ValueError, match="Unsupported image type"):
+        validate_upload_file(SimpleNamespace(filename="trap.gif"))
+
+    with pytest.raises(ValueError, match="Training/validation/test dataset images"):
+        validate_upload_file(SimpleNamespace(filename="training-sample.jpg"))
+
+
+def test_upload_metadata_normalization_and_format_validation() -> None:
+    assert normalize_optional_text("  field-1  ") == "field-1"
+    assert normalize_optional_text("   ") is None
+
+    validate_identifier("field_1-A", "field_id")
+    validate_trap_code("Trap 1-A")
+
+    with pytest.raises(ValueError, match="field_id must contain only"):
+        validate_identifier("field 1", "field_id")
+
+    with pytest.raises(ValueError, match="trap_code must contain only"):
+        validate_trap_code("Trap/1")

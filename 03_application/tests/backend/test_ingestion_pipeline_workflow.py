@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from app.api import analysis as analysis_api
 from app.db.base import Base
-from app.models import Detection, FieldMap, TrapUpload, User
+from app.models import Detection, FieldMap, TrapPoint, TrapUpload, User
 
 
 @pytest.fixture()
@@ -157,3 +157,52 @@ def test_upload_range_rejects_invalid_batch_before_storage(
     assert "Training/validation/test dataset images are not allowed" in str(exc.value.detail)
     assert db_session.scalars(select(TrapUpload)).all() == []
     assert not upload_dir.exists()
+
+
+def test_upload_range_rejects_inconsistent_trap_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    db_session: Session,
+    ingestion_user_and_field: tuple[User, FieldMap],
+) -> None:
+    user, field = ingestion_user_and_field
+    trap = TrapPoint(
+        id="trap-1",
+        field_id=field.id,
+        code="R01-P01",
+        custom_name=None,
+        latitude=52.0,
+        longitude=5.0,
+        row_index=1,
+        position_index=1,
+    )
+    db_session.add(trap)
+    db_session.commit()
+
+    class UnexpectedInferenceService:
+        def run(self, image_path: Path):  # noqa: ANN201
+            raise AssertionError("inference should not run for inconsistent metadata")
+
+    class FakeGraphService:
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(analysis_api, "get_settings", lambda: SimpleNamespace(upload_dir=str(tmp_path / "uploads")))
+    monkeypatch.setattr(analysis_api, "InferenceService", UnexpectedInferenceService)
+    monkeypatch.setattr(analysis_api, "GraphService", FakeGraphService)
+
+    with pytest.raises(HTTPException) as exc:
+        analysis_api.upload_range(
+            start_date=date(2026, 1, 1),
+            end_date=date(2026, 1, 1),
+            field_id="field-other",
+            trap_id=trap.id,
+            trap_code=trap.code,
+            images=[_upload("capture-a.jpg")],
+            db=db_session,
+            current_user=user,
+        )
+
+    assert exc.value.status_code == 400
+    assert exc.value.detail == "field_id does not match selected trap"
+    assert db_session.scalars(select(TrapUpload)).all() == []

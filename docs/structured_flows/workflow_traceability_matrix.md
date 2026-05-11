@@ -17,7 +17,7 @@ Coverage status scale:
 | #50 | [Feature][PoC] Manual Data Submission Workflow | Closed | Done | `upload_ingestion_flow.md` |
 | #51 | [Feature][MVP] Structured Upload Workflow with Metadata | Open | Partial | `upload_ingestion_flow.md`, `workflow_catalog.md` |
 | #52 | [Feature][MVP] Batch Image Upload Support | Open | Partial | `upload_ingestion_flow.md` |
-| #53 | [Feature][MVP] Input Standardisation and Validation at Collection | Open | Partial | `upload_ingestion_flow.md` |
+| #53 | [Feature][MVP] Input Standardisation and Validation at Collection | Open | Done | `docs/metadata/rules/collection-input-standards.md` |
 
 ## Metadata task chain
 
@@ -38,6 +38,15 @@ Coverage status scale:
 | #68 | Implement structured input interface for image and metadata upload | Closed | Done | Covered by WF-03/WF-04. |
 | #69 | Enforce validation and required fields in upload workflow | Closed | Done | Covered by validation/failure handling. |
 | #70 | Test and document structured upload workflow | Open | Partial | Baseline doc exists; test evidence still pending. |
+
+## Input standardisation task chain
+
+| Issue | Title | State | Coverage | Notes |
+|---|---|---|---|---|
+| #76 | Define input standards and validation rules at collection | Open | Done | Image, metadata, normalization, and feedback standards documented in `docs/metadata/rules/collection-input-standards.md`. |
+| #77 | Implement validation logic in frontend and upload workflow | Open | Done | Frontend validator blocks invalid dates/files/trap context before upload submission. |
+| #80 | Enforce standardised formats and constraints during submission | Open | Done | Backend normalizes and validates identifiers, trap codes, date order, batch files, and trap metadata consistency. |
+| #81 | Test and document input standardisation and validation workflow | Open | Done | Frontend/backend tests and automated coverage notes added to `collection-input-standards.md`. |
 
 ## Validation/logging task chain
 
