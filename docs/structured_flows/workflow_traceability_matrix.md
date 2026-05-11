@@ -15,7 +15,7 @@ Coverage status scale:
 | #42 | [Feature][MVP] Data Validation and Error Handling | Open | Partial | `upload_ingestion_flow.md`, `inference_flow.md` |
 | #49 | [Feature][PoC] Minimal Metadata Capture | Open | Partial | `workflow_catalog.md` (WF-04) |
 | #50 | [Feature][PoC] Manual Data Submission Workflow | Closed | Done | `upload_ingestion_flow.md` |
-| #51 | [Feature][MVP] Structured Upload Workflow with Metadata | Open | Partial | `upload_ingestion_flow.md`, `workflow_catalog.md` |
+| #51 | [Feature][MVP] Structured Upload Workflow with Metadata | Open | Done | `upload_ingestion_flow.md`, `workflow_catalog.md`, `docs/metadata/rules/structured-upload-format.md` |
 | #52 | [Feature][MVP] Batch Image Upload Support | Open | Done | `upload_ingestion_flow.md` |
 | #53 | [Feature][MVP] Input Standardisation and Validation at Collection | Open | Done | `docs/metadata/rules/collection-input-standards.md` |
 
@@ -34,10 +34,10 @@ Coverage status scale:
 | #60 | Implement metadata input in upload interface | Closed | Done | Covered; keep as canonical completion. |
 | #61 | Integrate metadata with upload and backend pipeline | Closed | Done | Captured in WF-03 sequence. |
 | #62 | Test and document metadata capture workflow | Closed | Done | Covered by matrix and ingestion flow. |
-| #67 | Define structured upload format and required metadata fields | Open | Gap | Requires final schema alignment sign-off. |
-| #68 | Implement structured input interface for image and metadata upload | Closed | Done | Covered by WF-03/WF-04. |
-| #69 | Enforce validation and required fields in upload workflow | Closed | Done | Covered by validation/failure handling. |
-| #70 | Test and document structured upload workflow | Open | Partial | Baseline doc exists; test evidence still pending. |
+| #67 | Define structured upload format and required metadata fields | Open | Done | MVP multipart format documented in `docs/metadata/rules/structured-upload-format.md`. |
+| #68 | Implement structured input interface for image and metadata upload | Closed | Done | Upload UI collects field/trap mode, date range, and image files; exact-trap and field-level paths covered by frontend tests. |
+| #69 | Enforce validation and required fields in upload workflow | Closed | Done | Frontend and backend enforce required metadata, image constraints, trap consistency, and date rules before persistence. |
+| #70 | Test and document structured upload workflow | Open | Done | Exact-trap structured metadata, field-level batch metadata, frontend submission shape, and validation failures covered in tests and workflow docs. |
 
 ## Input standardisation task chain
 

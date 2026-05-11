@@ -221,6 +221,14 @@ describe('DashboardPage', () => {
 
     fireEvent.submit(uploadButton.closest('form')!);
     await waitFor(() => expect(postFormMock).toHaveBeenCalledWith('/api/analysis/upload-range', expect.any(FormData), 'token-1'));
+
+    const submitted = postFormMock.mock.calls[0][1] as FormData;
+    expect(submitted.get('start_date')).toBe('2026-04-01');
+    expect(submitted.get('end_date')).toBe('2026-04-02');
+    expect(submitted.get('field_id')).toBe('field-1');
+    expect(submitted.get('trap_id')).toBe('trap-1');
+    expect(submitted.get('trap_code')).toBe('Trap 1');
+    expect(submitted.getAll('images')).toHaveLength(1);
   });
 
   it('blocks non-standard upload files before submission', async () => {

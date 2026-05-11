@@ -19,7 +19,7 @@ This document lists the major operational workflows in the insect identification
 ## WF-03 Upload and Ingestion
 
 - Scope: image upload, file validation, persistence, graph links.
-- Detailed doc: `upload_ingestion_flow.md`.
+- Detailed docs: `upload_ingestion_flow.md`, `../metadata/rules/structured-upload-format.md`.
 - Related issue cluster: `#48`, `#50`, `#51`, `#52`, `#35` + task chains.
 
 ## WF-04 Metadata Lifecycle

@@ -36,6 +36,8 @@ Ingest trap images and metadata into persistent storage and graph/database links
 ## Automated coverage
 - `03_application/tests/backend/test_ingestion_pipeline_workflow.py::test_upload_range_runs_ingestion_end_to_end`
   verifies upload -> processing -> storage -> prediction serialization -> graph link -> environment sync.
+- `03_application/tests/backend/test_ingestion_pipeline_workflow.py::test_upload_range_persists_structured_exact_trap_metadata`
+  verifies exact-trap structured metadata is validated, persisted, linked to detections, and reflected in graph calls.
 - `03_application/tests/backend/test_ingestion_pipeline_workflow.py::test_upload_range_rejects_invalid_batch_before_storage`
   verifies invalid batch input returns a controlled HTTP 400 before file storage, inference, graph linking, or SQL upload persistence.
 - `03_application/tests/backend/test_ingestion_pipeline_workflow.py::test_upload_range_rejects_oversized_batch_before_processing`

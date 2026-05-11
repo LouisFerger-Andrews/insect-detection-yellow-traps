@@ -117,6 +117,72 @@ def test_upload_range_runs_ingestion_end_to_end(
     assert env_calls == [(field.id, date(2026, 1, 1), date.today())]
 
 
+def test_upload_range_persists_structured_exact_trap_metadata(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    db_session: Session,
+    ingestion_user_and_field: tuple[User, FieldMap],
+) -> None:
+    user, field = ingestion_user_and_field
+    trap = TrapPoint(
+        id="trap-structured",
+        field_id=field.id,
+        code="R02-P04",
+        custom_name="North Edge",
+        latitude=52.0,
+        longitude=5.0,
+        row_index=2,
+        position_index=4,
+    )
+    db_session.add(trap)
+    db_session.commit()
+    upload_dir = tmp_path / "uploads"
+    graph_calls: list[tuple[str, int, date, int]] = []
+
+    class FakeInferenceService:
+        def run(self, image_path: Path):  # noqa: ANN201
+            assert image_path.exists()
+            return [{"bbox_xyxy": [10.0, 20.0, 30.0, 40.0], "confidence": 0.75, "class_id": 1}]
+
+    class FakeGraphService:
+        def link_upload_to_field(self, field_id: str, upload_id: int, capture_date: date, detection_count: int) -> None:
+            graph_calls.append((field_id, upload_id, capture_date, detection_count))
+
+        def close(self) -> None:
+            return None
+
+    monkeypatch.setattr(analysis_api, "get_settings", lambda: SimpleNamespace(upload_dir=str(upload_dir)))
+    monkeypatch.setattr(analysis_api, "InferenceService", FakeInferenceService)
+    monkeypatch.setattr(analysis_api, "GraphService", FakeGraphService)
+    monkeypatch.setattr(analysis_api, "infer_sync_start_date", lambda db, field_id: None)
+
+    response = analysis_api.upload_range(
+        start_date=date(2026, 5, 1),
+        end_date=date(2026, 5, 1),
+        field_id=field.id,
+        trap_id=trap.id,
+        trap_code="North Edge",
+        images=[_upload("structured-trap.jpg")],
+        db=db_session,
+        current_user=user,
+    )
+
+    upload = db_session.scalars(select(TrapUpload)).one()
+    detection = db_session.scalars(select(Detection)).one()
+
+    assert response.total_images == 1
+    assert response.results[0].field_id == field.id
+    assert response.results[0].trap_code == "North Edge"
+    assert upload.field_id == field.id
+    assert upload.trap_id == trap.id
+    assert upload.trap_code == "North Edge"
+    assert upload.capture_date == date(2026, 5, 1)
+    assert upload.detection_count == 1
+    assert round(upload.confidence_avg, 2) == 0.75
+    assert detection.upload_id == upload.id
+    assert graph_calls == [(field.id, upload.id, date(2026, 5, 1), 1)]
+
+
 def test_upload_range_rejects_invalid_batch_before_storage(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
