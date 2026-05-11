@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.api import admin, analysis, analytics, auth, environment, fields, map
 from app.core.config import get_settings
 from app.core.security import hash_password
+from app.core.security_headers import add_security_headers
 from app.db.base import Base
 from app.db.session import engine
 from app.models import User
@@ -14,6 +15,7 @@ from app.services.graph_service import GraphService
 settings = get_settings()
 
 app = FastAPI(title=settings.app_name)
+app.middleware('http')(add_security_headers)
 
 app.add_middleware(
     CORSMiddleware,

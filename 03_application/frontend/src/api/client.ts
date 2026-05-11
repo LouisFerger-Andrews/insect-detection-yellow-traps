@@ -1,7 +1,25 @@
 const API_BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000';
 
+async function apiErrorMessage(response: Response): Promise<string> {
+  if (response.status >= 500) {
+    return 'Server error. Try again later.';
+  }
+  const contentType = response.headers.get('Content-Type') ?? '';
+  const text = await response.text();
+  if (contentType.includes('application/json')) {
+    try {
+      const payload = JSON.parse(text) as { detail?: unknown };
+      if (typeof payload.detail === 'string') return payload.detail;
+    } catch {
+      return text || 'Request failed';
+    }
+  }
+  return text || 'Request failed';
+}
+
 async function request<T>(path: string, init: RequestInit = {}, token?: string): Promise<T> {
   const headers = new Headers(init.headers || {});
+  headers.set('Accept', 'application/json');
   if (!(init.body instanceof FormData)) {
     headers.set('Content-Type', 'application/json');
   }
@@ -14,14 +32,14 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
     response = await fetch(`${API_BASE}${path}`, {
       ...init,
       headers,
+      referrerPolicy: 'same-origin',
     });
   } catch {
     throw new Error(`Cannot reach API at ${API_BASE}. Ensure backend is running on port 8000.`);
   }
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || 'Request failed');
+    throw new Error(await apiErrorMessage(response));
   }
 
   return response.json() as Promise<T>;
@@ -29,6 +47,7 @@ async function request<T>(path: string, init: RequestInit = {}, token?: string):
 
 async function requestText(path: string, init: RequestInit = {}, token?: string): Promise<string> {
   const headers = new Headers(init.headers || {});
+  headers.set('Accept', 'text/csv, text/plain');
   if (token) {
     headers.set('Authorization', `Bearer ${token}`);
   }
@@ -38,14 +57,14 @@ async function requestText(path: string, init: RequestInit = {}, token?: string)
     response = await fetch(`${API_BASE}${path}`, {
       ...init,
       headers,
+      referrerPolicy: 'same-origin',
     });
   } catch {
     throw new Error(`Cannot reach API at ${API_BASE}. Ensure backend is running on port 8000.`);
   }
 
   if (!response.ok) {
-    const message = await response.text();
-    throw new Error(message || 'Request failed');
+    throw new Error(await apiErrorMessage(response));
   }
 
   return response.text();

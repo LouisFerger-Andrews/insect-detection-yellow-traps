@@ -15,6 +15,13 @@ cp .env.example .env
 
 Generate a secure `SECRET_KEY` in `.env`.
 
+For production or staging:
+
+- Use a randomly generated `SECRET_KEY` of at least 32 characters.
+- Change `ADMIN_PASSWORD`; the local default is rejected outside development.
+- Set explicit `CORS_ORIGINS`; wildcard origins are rejected outside development.
+- Serve the API only behind HTTPS and keep database/Neo4j ports private.
+
 ## 2) Install dependencies
 
 ```bash
