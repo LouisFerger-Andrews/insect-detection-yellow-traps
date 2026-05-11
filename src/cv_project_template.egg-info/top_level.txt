@@ -1,8 +1,0 @@
-approaches
-cli
-core
-cvcore
-data
-eval
-scripts
-utils

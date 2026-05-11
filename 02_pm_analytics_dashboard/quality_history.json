@@ -1,0 +1,213 @@
+[
+  {
+    "timestamp": "2026-04-06T23:07:06Z",
+    "total_checks": 1,
+    "passed_checks": 1,
+    "failed_checks": 0,
+    "pass_rate_pct": 100.0,
+    "checks": [
+      {
+        "name": "/Users/louis.ferger-andrews/insect-detection-yellow-traps/.venv/bin/python -m pytest -q 04_modeling_experimental/tests --cov=04_modeling_experimental/src --cov=03_application/backend/app --cov-report=term",
+        "status": "PASS",
+        "returncode": 0,
+        "stdout": "core/models/yolo.py                    14      0   100%\n04_modeling_experimental/src/cvcore/training/__init__.py               0      0   100%\n04_modeling_experimental/src/cvcore/training/optim.py                 10      0   100%\n04_modeling_experimental/src/cvcore/training/schedulers.py             7      0   100%\n04_modeling_experimental/src/cvcore/training/trainer.py                6      0   100%\n04_modeling_experimental/src/cvcore/utils/__init__.py                  0      0   100%\n04_modeling_experimental/src/cvcore/utils/config.py                    6      0   100%\n04_modeling_experimental/src/cvcore/utils/io.py                        3      0   100%\n04_modeling_experimental/src/cvcore/utils/logging.py                   3      1    67%\n04_modeling_experimental/src/cvcore/utils/reproducibility.py          26      6    77%\n04_modeling_experimental/src/data/__init__.py                          0      0   100%\n04_modeling_experimental/src/data/coco.py                             98      4    96%\n04_modeling_experimental/src/data/dataset.py                          21      0   100%\n04_modeling_experimental/src/data/exporters.py                        20      0   100%\n04_modeling_experimental/src/data/loaders.py                          12      0   100%\n04_modeling_experimental/src/data/masking.py                          37      3    92%\n04_modeling_experimental/src/eval/__init__.py                          0      0   100%\n04_modeling_experimental/src/eval/metrics.py                          10      0   100%\n04_modeling_experimental/src/utils/__init__.py                         0      0   100%\n04_modeling_experimental/src/utils/logging.py                         19     14    26%\n04_modeling_experimental/src/utils/repro.py                           20     15    25%\n--------------------------------------------------------------------------------------\nTOTAL                                                               2240   1263    44%\n41 passed, 1 skipped in 0.74s\n",
+        "stderr": "",
+        "label": "Runtime tests: pytest (04_modeling_experimental/tests)",
+        "passed_tests": 41,
+        "failed_tests": 0,
+        "coverage_pct": 44.0,
+        "category": "runtime"
+      }
+    ],
+    "runtime_summary": {
+      "passed": 1,
+      "failed": 0,
+      "total": 1
+    },
+    "runtime_pass_rate_pct": 100.0,
+    "runtime_tests_summary": {
+      "passed_tests": 41,
+      "failed_tests": 0,
+      "total_tests": 41
+    },
+    "runtime_tests_pass_rate_pct": 100.0,
+    "coverage_pct": 44.0
+  },
+  {
+    "timestamp": "2026-04-06T23:31:42Z",
+    "total_checks": 2,
+    "passed_checks": 2,
+    "failed_checks": 0,
+    "pass_rate_pct": 100.0,
+    "checks": [
+      {
+        "name": "/Users/louis.ferger-andrews/insect-detection-yellow-traps/.venv/bin/python -m pytest -q 03_application/tests/backend --cov=03_application/backend/app --cov-report=term --cov-report=json:/Users/louis.ferger-andrews/insect-detection-yellow-traps/03_application/backend/.coverage_backend.json",
+        "status": "PASS",
+        "returncode": 0,
+        "stdout": "py                        0      0   100%\n03_application/backend/app/db/base.py                            3      0   100%\n03_application/backend/app/db/session.py                        11      4    64%\n03_application/backend/app/main.py                              46     19    59%\n03_application/backend/app/models/__init__.py                    5      0   100%\n03_application/backend/app/models/environment.py                42      0   100%\n03_application/backend/app/models/field_map.py                  25      0   100%\n03_application/backend/app/models/upload.py                     28      0   100%\n03_application/backend/app/models/user.py                       13      0   100%\n03_application/backend/app/schemas/__init__.py                   0      0   100%\n03_application/backend/app/schemas/auth.py                      10      0   100%\n03_application/backend/app/schemas/field.py                      5      0   100%\n03_application/backend/app/schemas/map.py                       14      0   100%\n03_application/backend/app/schemas/upload.py                     9      0   100%\n03_application/backend/app/services/__init__.py                  0      0   100%\n03_application/backend/app/services/environment_service.py     138     74    46%\n03_application/backend/app/services/graph_service.py            60     14    77%\n03_application/backend/app/services/inference_service.py        26      2    92%\n03_application/backend/app/services/upload_service.py           33      2    94%\n03_application/backend/app/utils/__init__.py                     0      0   100%\n03_application/backend/app/utils/geo.py                         80      4    95%\n--------------------------------------------------------------------------------\nTOTAL                                                         1352    396    71%\nCoverage JSON written to file /Users/louis.ferger-andrews/insect-detection-yellow-traps/03_application/backend/.coverage_backend.json\n32 passed, 1 skipped, 2 warnings in 1.89s\n",
+        "stderr": "",
+        "label": "Backend tests: pytest (03 application backend)",
+        "passed_tests": 32,
+        "failed_tests": 0,
+        "coverage_pct": 70.71005917159763,
+        "covered_lines": 956,
+        "total_lines": 1352,
+        "category": "backend_runtime"
+      },
+      {
+        "name": "npm run test -- --coverage",
+        "status": "PASS",
+        "returncode": 0,
+        "stdout": "(3 tests) 20ms\n \u2713 src/pages/__tests__/AdminPage.test.tsx (3 tests) 46ms\n \u2713 src/context/__tests__/AuthContext.test.tsx (3 tests) 56ms\n \u2713 src/components/__tests__/FieldMapManager.test.tsx (1 test) 31ms\n \u2713 src/pages/__tests__/LoginPage.test.tsx (3 tests) 82ms\n \u2713 src/pages/__tests__/DashboardPage.test.tsx (2 tests) 156ms\n\n Test Files  8 passed (8)\n      Tests  22 passed (22)\n   Start at  01:31:41\n   Duration  1.30s (transform 1.06s, setup 589ms, collect 2.80s, tests 419ms, environment 2.59s, prepare 596ms)\n\n % Coverage report from istanbul\n-------------------|---------|----------|---------|---------|-------------------\nFile               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s \n-------------------|---------|----------|---------|---------|-------------------\nAll files          |   52.48 |    46.66 |   42.25 |   55.36 |                   \n src               |     100 |      100 |     100 |     100 |                   \n  App.tsx          |     100 |      100 |     100 |     100 |                   \n src/api           |     100 |    76.92 |     100 |     100 |                   \n  client.ts        |     100 |    76.92 |     100 |     100 | 1-3,24            \n src/components    |   37.16 |    35.11 |    30.3 |   39.51 |                   \n  ...apManager.tsx |   35.45 |    33.53 |   29.23 |   37.68 | ...20-534,573-610 \n  ...ctedRoute.tsx |     100 |      100 |     100 |     100 |                   \n src/context       |   97.22 |       75 |     100 |   97.22 |                   \n  AuthContext.tsx  |   97.22 |       75 |     100 |   97.22 | 79                \n src/pages         |   54.43 |    50.25 |    42.1 |   57.44 |                   \n  AdminPage.tsx    |     100 |       90 |     100 |     100 | 43                \n  ...boardPage.tsx |   49.65 |    47.32 |   36.36 |   52.59 | ...1049,1057,1097 \n  LoginPage.tsx    |     100 |    93.75 |     100 |     100 | 33                \n-------------------|---------|----------|---------|---------|-------------------\n",
+        "stderr": "",
+        "label": "Frontend tests: vitest (03 application frontend)",
+        "passed_tests": 8,
+        "failed_tests": 0,
+        "coverage_pct": 55.36,
+        "covered_lines": 382,
+        "total_lines": 690,
+        "category": "frontend_runtime"
+      }
+    ],
+    "backend_runtime_summary": {
+      "passed": 1,
+      "failed": 0,
+      "total": 1
+    },
+    "backend_runtime_pass_rate_pct": 100.0,
+    "frontend_runtime_summary": {
+      "passed": 1,
+      "failed": 0,
+      "total": 1
+    },
+    "frontend_runtime_pass_rate_pct": 100.0,
+    "runtime_tests_summary": {
+      "passed_tests": 40,
+      "failed_tests": 0,
+      "total_tests": 40
+    },
+    "runtime_tests_pass_rate_pct": 100.0,
+    "backend_coverage_pct": 70.71005917159763,
+    "frontend_coverage_pct": 55.36,
+    "application_coverage_pct": 65.5,
+    "coverage_pct": 65.5
+  },
+  {
+    "timestamp": "2026-04-06T23:41:28Z",
+    "total_checks": 2,
+    "passed_checks": 2,
+    "failed_checks": 0,
+    "pass_rate_pct": 100.0,
+    "checks": [
+      {
+        "name": "/Users/louis.ferger-andrews/insect-detection-yellow-traps/.venv/bin/python -m pytest -q 03_application/tests/backend --cov=03_application/backend/app --cov-report=term --cov-report=json:/Users/louis.ferger-andrews/insect-detection-yellow-traps/03_application/backend/.coverage_backend.json",
+        "status": "PASS",
+        "returncode": 0,
+        "stdout": "py                        0      0   100%\n03_application/backend/app/db/base.py                            3      0   100%\n03_application/backend/app/db/session.py                        11      4    64%\n03_application/backend/app/main.py                              46     19    59%\n03_application/backend/app/models/__init__.py                    5      0   100%\n03_application/backend/app/models/environment.py                42      0   100%\n03_application/backend/app/models/field_map.py                  25      0   100%\n03_application/backend/app/models/upload.py                     28      0   100%\n03_application/backend/app/models/user.py                       13      0   100%\n03_application/backend/app/schemas/__init__.py                   0      0   100%\n03_application/backend/app/schemas/auth.py                      10      0   100%\n03_application/backend/app/schemas/field.py                      5      0   100%\n03_application/backend/app/schemas/map.py                       14      0   100%\n03_application/backend/app/schemas/upload.py                     9      0   100%\n03_application/backend/app/services/__init__.py                  0      0   100%\n03_application/backend/app/services/environment_service.py     138     31    78%\n03_application/backend/app/services/graph_service.py            60     14    77%\n03_application/backend/app/services/inference_service.py        26      2    92%\n03_application/backend/app/services/upload_service.py           33      2    94%\n03_application/backend/app/utils/__init__.py                     0      0   100%\n03_application/backend/app/utils/geo.py                         80      4    95%\n--------------------------------------------------------------------------------\nTOTAL                                                         1352    208    85%\nCoverage JSON written to file /Users/louis.ferger-andrews/insect-detection-yellow-traps/03_application/backend/.coverage_backend.json\n43 passed, 1 skipped, 4 warnings in 2.79s\n",
+        "stderr": "",
+        "label": "Backend tests: pytest (03 application backend)",
+        "passed_tests": 43,
+        "failed_tests": 0,
+        "coverage_pct": 84.61538461538461,
+        "covered_lines": 1144,
+        "total_lines": 1352,
+        "category": "backend_runtime"
+      },
+      {
+        "name": "npm run test -- --coverage",
+        "status": "PASS",
+        "returncode": 0,
+        "stdout": " tests) 28ms\n \u2713 src/pages/__tests__/AdminPage.test.tsx (3 tests) 36ms\n \u2713 src/context/__tests__/AuthContext.test.tsx (3 tests) 40ms\n \u2713 src/pages/__tests__/LoginPage.test.tsx (3 tests) 93ms\n \u2713 src/components/__tests__/FieldMapManager.test.tsx (5 tests) 222ms\n \u2713 src/pages/__tests__/DashboardPage.test.tsx (6 tests) 286ms\n\n Test Files  8 passed (8)\n      Tests  30 passed (30)\n   Start at  01:41:26\n   Duration  1.50s (transform 1.37s, setup 773ms, collect 2.99s, tests 737ms, environment 3.12s, prepare 460ms)\n\n % Coverage report from istanbul\n-------------------|---------|----------|---------|---------|-------------------\nFile               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s \n-------------------|---------|----------|---------|---------|-------------------\nAll files          |   83.94 |    72.99 |   81.69 |   86.81 |                   \n src               |     100 |      100 |     100 |     100 |                   \n  App.tsx          |     100 |      100 |     100 |     100 |                   \n src/api           |     100 |    76.92 |     100 |     100 |                   \n  client.ts        |     100 |    76.92 |     100 |     100 | 1-3,24            \n src/components    |   72.12 |     73.8 |   65.15 |   75.12 |                   \n  ...apManager.tsx |   71.36 |    73.17 |   64.61 |   74.37 | ...31-534,580-583 \n  ...ctedRoute.tsx |     100 |      100 |     100 |     100 |                   \n src/context       |   97.22 |       75 |     100 |   97.22 |                   \n  AuthContext.tsx  |   97.22 |       75 |     100 |   97.22 | 79                \n src/pages         |   87.83 |     72.5 |   87.96 |   90.93 |                   \n  AdminPage.tsx    |     100 |       90 |     100 |     100 | 43                \n  ...boardPage.tsx |   86.56 |    71.12 |   86.77 |   89.89 | ...,765,1049,1057 \n  LoginPage.tsx    |     100 |    93.75 |     100 |     100 | 33                \n-------------------|---------|----------|---------|---------|-------------------\n",
+        "stderr": "",
+        "label": "Frontend tests: vitest (03 application frontend)",
+        "passed_tests": 8,
+        "failed_tests": 0,
+        "coverage_pct": 86.81,
+        "covered_lines": 599,
+        "total_lines": 690,
+        "category": "frontend_runtime"
+      }
+    ],
+    "backend_runtime_summary": {
+      "passed": 1,
+      "failed": 0,
+      "total": 1
+    },
+    "backend_runtime_pass_rate_pct": 100.0,
+    "frontend_runtime_summary": {
+      "passed": 1,
+      "failed": 0,
+      "total": 1
+    },
+    "frontend_runtime_pass_rate_pct": 100.0,
+    "runtime_tests_summary": {
+      "passed_tests": 51,
+      "failed_tests": 0,
+      "total_tests": 51
+    },
+    "runtime_tests_pass_rate_pct": 100.0,
+    "backend_coverage_pct": 84.61538461538461,
+    "frontend_coverage_pct": 86.81,
+    "application_coverage_pct": 85.4,
+    "coverage_pct": 85.4
+  },
+  {
+    "timestamp": "2026-04-07T12:07:10Z",
+    "total_checks": 2,
+    "passed_checks": 2,
+    "failed_checks": 0,
+    "pass_rate_pct": 100.0,
+    "checks": [
+      {
+        "name": "/Users/louis.ferger-andrews/insect-detection-yellow-traps/.venv/bin/python -m pytest -q 03_application/tests/backend --cov=03_application/backend/app --cov-report=term --cov-report=json:/Users/louis.ferger-andrews/insect-detection-yellow-traps/03_application/backend/.coverage_backend.json",
+        "status": "PASS",
+        "returncode": 0,
+        "stdout": "py                        0      0   100%\n03_application/backend/app/db/base.py                            3      0   100%\n03_application/backend/app/db/session.py                        11      4    64%\n03_application/backend/app/main.py                              46     19    59%\n03_application/backend/app/models/__init__.py                    5      0   100%\n03_application/backend/app/models/environment.py                42      0   100%\n03_application/backend/app/models/field_map.py                  25      0   100%\n03_application/backend/app/models/upload.py                     28      0   100%\n03_application/backend/app/models/user.py                       13      0   100%\n03_application/backend/app/schemas/__init__.py                   0      0   100%\n03_application/backend/app/schemas/auth.py                      10      0   100%\n03_application/backend/app/schemas/field.py                      5      0   100%\n03_application/backend/app/schemas/map.py                       14      0   100%\n03_application/backend/app/schemas/upload.py                     9      0   100%\n03_application/backend/app/services/__init__.py                  0      0   100%\n03_application/backend/app/services/environment_service.py     138     31    78%\n03_application/backend/app/services/graph_service.py            60     14    77%\n03_application/backend/app/services/inference_service.py        26      2    92%\n03_application/backend/app/services/upload_service.py           33      2    94%\n03_application/backend/app/utils/__init__.py                     0      0   100%\n03_application/backend/app/utils/geo.py                         80      4    95%\n--------------------------------------------------------------------------------\nTOTAL                                                         1352    208    85%\nCoverage JSON written to file /Users/louis.ferger-andrews/insect-detection-yellow-traps/03_application/backend/.coverage_backend.json\n43 passed, 1 skipped, 4 warnings in 2.90s\n",
+        "stderr": "",
+        "label": "Backend tests: pytest (03 application backend)",
+        "passed_tests": 43,
+        "failed_tests": 0,
+        "coverage_pct": 84.61538461538461,
+        "covered_lines": 1144,
+        "total_lines": 1352,
+        "category": "backend_runtime"
+      },
+      {
+        "name": "npm run test -- --coverage",
+        "status": "PASS",
+        "returncode": 0,
+        "stdout": " tests) 25ms\n \u2713 src/pages/__tests__/AdminPage.test.tsx (3 tests) 35ms\n \u2713 src/context/__tests__/AuthContext.test.tsx (3 tests) 43ms\n \u2713 src/pages/__tests__/LoginPage.test.tsx (3 tests) 82ms\n \u2713 src/components/__tests__/FieldMapManager.test.tsx (5 tests) 183ms\n \u2713 src/pages/__tests__/DashboardPage.test.tsx (6 tests) 285ms\n\n Test Files  8 passed (8)\n      Tests  30 passed (30)\n   Start at  14:07:08\n   Duration  1.52s (transform 1.24s, setup 738ms, collect 3.06s, tests 687ms, environment 3.28s, prepare 513ms)\n\n % Coverage report from istanbul\n-------------------|---------|----------|---------|---------|-------------------\nFile               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s \n-------------------|---------|----------|---------|---------|-------------------\nAll files          |   83.94 |    72.99 |   81.69 |   86.81 |                   \n src               |     100 |      100 |     100 |     100 |                   \n  App.tsx          |     100 |      100 |     100 |     100 |                   \n src/api           |     100 |    76.92 |     100 |     100 |                   \n  client.ts        |     100 |    76.92 |     100 |     100 | 1-3,24            \n src/components    |   72.12 |     73.8 |   65.15 |   75.12 |                   \n  ...apManager.tsx |   71.36 |    73.17 |   64.61 |   74.37 | ...31-534,580-583 \n  ...ctedRoute.tsx |     100 |      100 |     100 |     100 |                   \n src/context       |   97.22 |       75 |     100 |   97.22 |                   \n  AuthContext.tsx  |   97.22 |       75 |     100 |   97.22 | 79                \n src/pages         |   87.83 |     72.5 |   87.96 |   90.93 |                   \n  AdminPage.tsx    |     100 |       90 |     100 |     100 | 43                \n  ...boardPage.tsx |   86.56 |    71.12 |   86.77 |   89.89 | ...,765,1049,1057 \n  LoginPage.tsx    |     100 |    93.75 |     100 |     100 | 33                \n-------------------|---------|----------|---------|---------|-------------------\n",
+        "stderr": "",
+        "label": "Frontend tests: vitest (03 application frontend)",
+        "passed_tests": 8,
+        "failed_tests": 0,
+        "coverage_pct": 86.81,
+        "covered_lines": 599,
+        "total_lines": 690,
+        "category": "frontend_runtime"
+      }
+    ],
+    "backend_runtime_summary": {
+      "passed": 1,
+      "failed": 0,
+      "total": 1
+    },
+    "backend_runtime_pass_rate_pct": 100.0,
+    "frontend_runtime_summary": {
+      "passed": 1,
+      "failed": 0,
+      "total": 1
+    },
+    "frontend_runtime_pass_rate_pct": 100.0,
+    "runtime_tests_summary": {
+      "passed_tests": 51,
+      "failed_tests": 0,
+      "total_tests": 51
+    },
+    "runtime_tests_pass_rate_pct": 100.0,
+    "backend_coverage_pct": 84.61538461538461,
+    "frontend_coverage_pct": 86.81,
+    "application_coverage_pct": 85.4,
+    "coverage_pct": 85.4
+  }
+]

@@ -1,0 +1,13 @@
+project: insect_yellow
+
+data:
+  raw_dir: 04_modeling_experimental/data/raw/{project}
+  processed_dir: 04_modeling_experimental/data/processed/{project}
+  image_glob: "*.jpg"
+
+repro:
+  seed: 1337
+
+training:
+  epochs: 1
+  batch_size: 4

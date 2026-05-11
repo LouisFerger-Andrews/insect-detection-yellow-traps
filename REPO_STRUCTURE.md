@@ -1,34 +1,28 @@
 # Repository Structure
 
-This repo now has two clear parts:
+## 1) `01_project_docs_notes/`
+- Project docs and notes
+- Standards and governance docs in `01_project_docs_notes/docs/standards/`
 
-## 1) Existing CV project (original)
-- `src/`, `configs/`, `data/`, `runs/`, `weights/`, `tests/`
-- Used for model experimentation/training.
+## 2) `02_pm_analytics_dashboard/`
+- Internal Streamlit SDLC analytics dashboard
+- Uses GitHub repo metadata (issues/PRs/milestones)
 
-## 2) Web MVP (`apps/`)
-- `apps/poc-model/`
-  - Isolated PoC checkpoint used by backend inference.
-- `apps/backend/`
-  - `app/api/`: REST endpoints (`auth`, `fields`, `analysis`, `admin`)
-  - `app/api/map.py`: map search + field polygon + trap point endpoints
-  - `app/models/`: PostgreSQL models
-  - `app/services/`: YOLO inference + Neo4j graph logic
-  - `storage/uploads/`: uploaded trap images
-  - `.env.example`: backend configuration template
-- `apps/frontend/`
-  - `src/pages/`: Login, Dashboard, Admin screens
-  - `src/components/FieldMapManager.tsx`: OpenStreetMap field/trap UI
-  - `src/api/`: API client
-  - `src/context/`: auth state and token handling
+## 3) `03_application/`
+- `backend/`: FastAPI API, auth, ingestion, inference services
+- `frontend/`: React app for user workflow
+- `poc-model/`: runtime model artifacts used by backend
+- `docker-compose.yml`: infrastructure (Postgres, Neo4j)
+- `docker-compose.app.yml`: app service composition
 
-## Infra
-- `docker-compose.yml`
-  - `postgres` for auth/data
-  - `neo4j` for graph field relationships
+## 4) `04_modeling_experimental/`
+- `src/`: modeling and reusable CV core logic
+- `configs/`: modeling/training configs
+- `data/`: experimental datasets
+- `runs/`: training/evaluation outputs
+- `scripts/`: modeling automation scripts
+- `tests/`: model/core/backend tests
+- `weights/`: model weight files
 
-## Local URLs
-- Frontend: `http://localhost:5173`
-- Backend API docs: `http://localhost:8000/docs`
-- Backend health: `http://localhost:8000/health`
-- Neo4j Browser: `http://localhost:7474`
+## Root-level system folders
+- `.git/`, `.github/`, `.venv/`, `.pytest_cache/` (tooling/system folders)

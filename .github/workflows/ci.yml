@@ -1,0 +1,42 @@
+name: CI
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+
+jobs:
+  quality-and-build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Set up Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20.11.1"
+          cache: "npm"
+          cache-dependency-path: 03_application/frontend/package-lock.json
+
+      - name: Backend compile checks
+        run: python -m compileall 03_application/backend/app 04_modeling_experimental/src
+
+      - name: Frontend build checks
+        working-directory: 03_application/frontend
+        run: |
+          npm ci
+          npm run build
+
+      - name: Build backend container
+        run: docker build -t swd-monitoring-backend:ci 03_application/backend
+
+      - name: Build frontend container
+        run: docker build -t swd-monitoring-frontend:ci 03_application/frontend

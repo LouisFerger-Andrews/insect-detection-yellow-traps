@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "cv-project-template"
 version = "0.1.0"
@@ -18,4 +22,10 @@ cvcore = "cvcore.cli:app"
 insect = "cli:app"
 
 [tool.pytest.ini_options]
-testpaths = ["tests"]
+testpaths = ["03_application/tests", "04_modeling_experimental/tests"]
+
+[tool.setuptools]
+package-dir = {"" = "04_modeling_experimental/src"}
+
+[tool.setuptools.packages.find]
+where = ["04_modeling_experimental/src"]

@@ -1,0 +1,10 @@
+{
+  "schema_version": "v1.0.0",
+  "field_id": "brightlands_f01",
+  "trap_code": "T12",
+  "capture_date": "2026-04-06",
+  "capture_time": "08:30:00",
+  "timezone": "Europe/Berlin",
+  "device_id": "cam-west-01",
+  "operator_id": "tech-lfa"
+}

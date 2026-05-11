@@ -27,7 +27,6 @@ Security fixes are prioritized for the current `main` branch.
 ## Sensitive Data Rules
 
 - Never commit API keys, credentials, or production secrets.
-- Never commit raw user/sensor datasets under `data/raw`.
+- Never commit raw user/sensor datasets under `04_modeling_experimental/data/raw`.
 - Rotate credentials immediately if exposure is suspected.
 - If secrets are committed, rewrite history and force push after remediation.
-

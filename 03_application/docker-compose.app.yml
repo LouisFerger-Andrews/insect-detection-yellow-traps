@@ -1,0 +1,36 @@
+services:
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    image: swd-monitoring-backend:local
+    container_name: swd_backend
+    restart: unless-stopped
+    env_file:
+      - ./backend/.env
+    environment:
+      POSTGRES_URL: postgresql+psycopg2://swd_user:swd_pass@postgres:5432/swd_monitoring
+      NEO4J_URI: bolt://neo4j:7687
+      MODEL_WEIGHTS_PATH: /models/swd_yolo_best.pt
+      MODEL_METRICS_PATH: /models/model_metrics.json
+      CORS_ORIGINS: http://localhost:5173
+    depends_on:
+      - postgres
+      - neo4j
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./backend/storage:/app/storage
+      - ./poc-model:/models:ro
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    image: swd-monitoring-frontend:local
+    container_name: swd_frontend
+    restart: unless-stopped
+    depends_on:
+      - backend
+    ports:
+      - "5173:80"

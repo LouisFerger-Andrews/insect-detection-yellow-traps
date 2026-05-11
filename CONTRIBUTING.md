@@ -62,19 +62,19 @@ Checklist:
 Recommended pre-PR check:
 
 ```bash
-./scripts/check_quality.sh
+./04_modeling_experimental/scripts/check_quality.sh
 ```
 
 ## Code Standards
 
 Language-specific standards:
-- [Python Standards](docs/standards/python.md)
-- [TypeScript Standards](docs/standards/typescript.md)
-- [Repository Standards](docs/standards/repository.md)
+- [Python Standards](01_project_docs_notes/docs/standards/python.md)
+- [TypeScript Standards](01_project_docs_notes/docs/standards/typescript.md)
+- [Repository Standards](01_project_docs_notes/docs/standards/repository.md)
 
 ## Security and Sensitive Data
 
 - Do not commit secrets, API keys, tokens, or passwords.
-- Do not commit raw datasets under `data/raw`.
+- Do not commit raw datasets under `04_modeling_experimental/data/raw`.
 - Review `.gitignore` before staging.
 - If sensitive data is committed by mistake, report immediately and rotate credentials.

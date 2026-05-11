@@ -1,20 +1,30 @@
 __pycache__/
 *.pyc
+.coverage
+coverage/
 .venv/
 .env
 .DS_Store
 projects/*/runs/
 projects/*/data/
-apps/frontend/node_modules/
-apps/frontend/dist/
-apps/backend/storage/uploads/
-apps/backend/.env
-apps/backend/*.log
-apps/backend/*.pid
-apps/frontend/*.log
-apps/frontend/*.pid
+03_application/frontend/node_modules/
+03_application/frontend/dist/
+03_application/frontend/coverage/
+03_application/backend/storage/uploads/
+03_application/backend/.env
+03_application/backend/.coverage_backend.json
+03_application/backend/*.log
+03_application/backend/*.pid
+03_application/frontend/*.log
+03_application/frontend/*.pid
 
 # Local raw datasets (never commit)
-data/raw/
-data/**/2024/
-data/**/2025/
+04_modeling_experimental/data/raw/
+04_modeling_experimental/data/**/2024/
+04_modeling_experimental/data/**/2025/
+
+# Never commit image binaries from local datasets/runs
+*.jpg
+*.jpeg
+*.JPG
+*.JPEG
