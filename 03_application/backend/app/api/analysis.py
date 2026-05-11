@@ -11,6 +11,7 @@ from sqlalchemy import and_, extract, func
 from sqlalchemy.orm import Session
 import requests
 
+from app.api.access import require_field_access
 from app.api.deps import get_current_user
 from app.core.config import get_settings
 from app.db.session import get_db
@@ -81,11 +82,7 @@ def upload_range(
         trap = db.query(TrapPoint).filter(TrapPoint.id == trap_id).first()
         if trap is None:
             raise HTTPException(status_code=404, detail='Trap not found')
-        field = db.query(FieldMap).filter(FieldMap.id == trap.field_id).first()
-        if field is None:
-            raise HTTPException(status_code=404, detail='Field not found')
-        if current_user.role != 'admin' and field.owner_user_id != current_user.id:
-            raise HTTPException(status_code=403, detail='Forbidden')
+        field = require_field_access(db, trap.field_id, current_user)
         if field_id and field_id != field.id:
             raise HTTPException(status_code=400, detail='field_id does not match selected trap')
         resolved_field_id = field.id
@@ -95,11 +92,7 @@ def upload_range(
     else:
         if not field_id:
             raise HTTPException(status_code=400, detail='field_id is required when trap_id is not provided')
-        field = db.query(FieldMap).filter(FieldMap.id == field_id).first()
-        if field is None:
-            raise HTTPException(status_code=404, detail='Field not found')
-        if current_user.role != 'admin' and field.owner_user_id != current_user.id:
-            raise HTTPException(status_code=403, detail='Forbidden')
+        field = require_field_access(db, field_id, current_user)
         resolved_field_id = field.id
         resolved_trap_code = trap_code or 'UNSPECIFIED'
 
@@ -353,11 +346,7 @@ def exploratory_chat(
 
     selected_field: FieldMap | None = None
     if requested_field_id:
-        selected_field = db.query(FieldMap).filter(FieldMap.id == str(requested_field_id)).first()
-        if selected_field is None:
-            raise HTTPException(status_code=404, detail='Field not found')
-        if current_user.role != 'admin' and selected_field.owner_user_id != current_user.id:
-            raise HTTPException(status_code=403, detail='Forbidden')
+        selected_field = require_field_access(db, str(requested_field_id), current_user)
 
     base_upload_query = apply_production_upload_filter(db.query(TrapUpload))
     if current_user.role != 'admin':

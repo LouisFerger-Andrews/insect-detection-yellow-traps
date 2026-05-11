@@ -194,6 +194,49 @@ def test_upload_range_persists_structured_exact_trap_metadata(
     assert graph_calls == [(field.id, upload.id, date(2026, 5, 1), 1)]
 
 
+def test_upload_range_rejects_other_workspace_field(
+    db_session: Session,
+) -> None:
+    owner = User(
+        id=111,
+        email="owner@example.test",
+        full_name="Owner",
+        password_hash="not-used",
+        role="user",
+        is_active=True,
+    )
+    other = User(
+        id=222,
+        email="other@example.test",
+        full_name="Other",
+        password_hash="not-used",
+        role="user",
+        is_active=True,
+    )
+    field = FieldMap(
+        id="field-owned",
+        owner_user_id=owner.id,
+        name="Owned Field",
+        polygon_geojson="{}",
+        area_m2=100.0,
+    )
+    db_session.add_all([owner, other, field])
+    db_session.commit()
+
+    with pytest.raises(HTTPException) as exc:
+        analysis_api.upload_range(
+            start_date=date(2026, 5, 1),
+            end_date=date(2026, 5, 1),
+            field_id=field.id,
+            trap_id=None,
+            trap_code="R01-P01",
+            images=[_upload("blocked.jpg")],
+            db=db_session,
+            current_user=other,
+        )
+    assert exc.value.status_code == 403
+
+
 def test_get_upload_prediction_result_returns_image_metadata_and_detections(
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
