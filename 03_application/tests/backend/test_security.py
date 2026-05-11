@@ -13,7 +13,7 @@ from app.core.security import ALGORITHM, create_access_token, hash_password, ver
 
 
 def _seed_env(monkeypatch) -> None:  # noqa: ANN001
-    monkeypatch.setenv("SECRET_KEY", "test-secret")
+    monkeypatch.setenv("SECRET_KEY", "test-secret-key-for-local-tests-32")
     monkeypatch.setenv("POSTGRES_URL", "sqlite:///./test.db")
     monkeypatch.setenv("NEO4J_URI", "bolt://localhost:7687")
     monkeypatch.setenv("NEO4J_USER", "neo4j")
@@ -36,7 +36,9 @@ def test_hash_and_verify_password(monkeypatch) -> None:  # noqa: ANN001
 def test_create_access_token_contains_expected_claims(monkeypatch) -> None:  # noqa: ANN001
     _seed_env(monkeypatch)
     token = create_access_token(subject="user@example.com", role="admin")
-    payload = jwt.decode(token, "test-secret", algorithms=[ALGORITHM])
+    payload = jwt.decode(token, "test-secret-key-for-local-tests-32", algorithms=[ALGORITHM])
     assert payload["sub"] == "user@example.com"
     assert payload["role"] == "admin"
+    assert payload["type"] == "access"
+    assert "iat" in payload
     assert "exp" in payload

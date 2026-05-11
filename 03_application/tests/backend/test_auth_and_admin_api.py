@@ -115,7 +115,7 @@ def test_get_current_user_and_require_admin(monkeypatch: pytest.MonkeyPatch) -> 
     db_ok = FakeDB([FakeQuery(first_value=user)])
 
     monkeypatch.setattr(deps_api, "get_settings", lambda: SimpleNamespace(secret_key="secret"))
-    monkeypatch.setattr(deps_api.jwt, "decode", lambda token, key, algorithms: {"sub": "9"})
+    monkeypatch.setattr(deps_api.jwt, "decode", lambda token, key, algorithms: {"sub": "9", "type": "access"})
 
     current = deps_api.get_current_user(db=db_ok, token="tok")
     assert current.id == 9
@@ -129,6 +129,16 @@ def test_get_current_user_and_require_admin(monkeypatch: pytest.MonkeyPatch) -> 
     with pytest.raises(HTTPException) as exc2:
         deps_api.get_current_user(db=db_none, token="tok")
     assert exc2.value.status_code == 401
+
+    monkeypatch.setattr(deps_api.jwt, "decode", lambda token, key, algorithms: {"sub": "not-an-int", "type": "access"})
+    with pytest.raises(HTTPException) as exc3:
+        deps_api.get_current_user(db=FakeDB([]), token="tok")
+    assert exc3.value.status_code == 401
+
+    monkeypatch.setattr(deps_api.jwt, "decode", lambda token, key, algorithms: {"sub": "9", "type": "refresh"})
+    with pytest.raises(HTTPException) as exc4:
+        deps_api.get_current_user(db=FakeDB([]), token="tok")
+    assert exc4.value.status_code == 401
 
 
 def test_admin_overview() -> None:
