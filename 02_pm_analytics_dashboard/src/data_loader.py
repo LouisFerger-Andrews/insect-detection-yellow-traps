@@ -1,3 +1,11 @@
+"""
+File Purpose: data_loader.py module
+Inputs: Imported modules, function arguments, request payloads where applicable.
+Outputs: Return values, API responses, and side effects documented in functions/classes.
+Process: Implements module-specific business or UI logic.
+Authorship: Louis Ferger-Andrews (@LouisFerger-Andrews)
+"""
+
 import logging
 from typing import Any, Dict, List, Optional
 

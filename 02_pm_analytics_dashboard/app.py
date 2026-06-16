@@ -1,3 +1,11 @@
+"""
+File Purpose: app.py module
+Inputs: Imported modules, function arguments, request payloads where applicable.
+Outputs: Return values, API responses, and side effects documented in functions/classes.
+Process: Implements module-specific business or UI logic.
+Authorship: Louis Ferger-Andrews (@LouisFerger-Andrews)
+"""
+
 import os
 import json
 import re
@@ -1044,6 +1052,7 @@ def choose_current_milestone(milestones_df: pd.DataFrame) -> Optional[str]:
 
 
 QUALITY_HISTORY_PATH = os.path.join(ROOT_DIR, "quality_history.json")
+DEPLOYMENT_HISTORY_PATH = os.path.join(ROOT_DIR, "deployment_history.json")
 
 
 def _run_check(cmd: list[str], cwd: str) -> dict:
@@ -1264,10 +1273,35 @@ def load_quality_history() -> list[dict]:
         with open(QUALITY_HISTORY_PATH, "r", encoding="utf-8") as f:
             data = json.load(f)
         if isinstance(data, list):
+            if not _get_config_bool("ENABLE_LIVE_QUALITY_HISTORY", False):
+                demo_data = [item for item in data if item.get("source") == "demo-quality-history"]
+                if demo_data:
+                    return demo_data
             return data
         return []
     except Exception:
         return []
+
+
+def load_deployment_history() -> pd.DataFrame:
+    if not os.path.exists(DEPLOYMENT_HISTORY_PATH):
+        return pd.DataFrame()
+    try:
+        with open(DEPLOYMENT_HISTORY_PATH, "r", encoding="utf-8") as f:
+            data = json.load(f)
+    except Exception:
+        return pd.DataFrame()
+    if not isinstance(data, list):
+        return pd.DataFrame()
+    df = pd.DataFrame(data)
+    if df.empty:
+        return df
+    df["timestamp"] = pd.to_datetime(df.get("timestamp"), utc=True, errors="coerce")
+    if "duration_min" in df.columns:
+        df["duration_min"] = pd.to_numeric(df["duration_min"], errors="coerce")
+    if "rollback" in df.columns:
+        df["rollback"] = df["rollback"].fillna(False).astype(bool)
+    return df
 
 
 def save_quality_history(history: list[dict]) -> None:
@@ -1364,6 +1398,64 @@ def coverage_trend_chart(history: list[dict]) -> go.Figure:
     df = df.sort_values("timestamp").groupby("week", as_index=False).last()
     fig = px.bar(df, x="week", y="coverage_pct", title=title, text="coverage_pct")
     fig.update_traces(texttemplate="%{text:.1f}%", textposition="outside")
+    fig.update_yaxes(range=[0, 100], title="Coverage (%)")
+    return fig
+
+
+def quality_pass_rate_trend_chart(history: list[dict]) -> go.Figure:
+    title = "Weekly Test Pass Rate"
+    if not history:
+        fig = go.Figure()
+        fig.update_layout(title=title)
+        return fig
+    rows = []
+    for item in history:
+        ts = pd.to_datetime(item.get("timestamp"), utc=True, errors="coerce")
+        if pd.isna(ts):
+            continue
+        rows.append(
+            {
+                "timestamp": ts,
+                "pass_rate_pct": float(item.get("runtime_tests_pass_rate_pct", 0.0)),
+            }
+        )
+    df = pd.DataFrame(rows)
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(title=title)
+        return fig
+    df["week"] = df["timestamp"].dt.tz_convert("UTC").dt.to_period("W").dt.start_time
+    df = df.sort_values("timestamp").groupby("week", as_index=False).last()
+    fig = px.line(df, x="week", y="pass_rate_pct", markers=True, title=title)
+    fig.update_yaxes(range=[0, 105], title="Pass rate (%)")
+    return fig
+
+
+def coverage_component_trend_chart(history: list[dict]) -> go.Figure:
+    title = "Backend vs Frontend Coverage"
+    if not history:
+        fig = go.Figure()
+        fig.update_layout(title=title)
+        return fig
+    rows = []
+    for item in history:
+        ts = pd.to_datetime(item.get("timestamp"), utc=True, errors="coerce")
+        if pd.isna(ts):
+            continue
+        rows.extend(
+            [
+                {"timestamp": ts, "component": "Backend", "coverage_pct": float(item.get("backend_coverage_pct", 0.0))},
+                {"timestamp": ts, "component": "Frontend", "coverage_pct": float(item.get("frontend_coverage_pct", 0.0))},
+            ]
+        )
+    df = pd.DataFrame(rows)
+    if df.empty:
+        fig = go.Figure()
+        fig.update_layout(title=title)
+        return fig
+    df["week"] = df["timestamp"].dt.tz_convert("UTC").dt.to_period("W").dt.start_time
+    df = df.sort_values("timestamp").groupby(["week", "component"], as_index=False).last()
+    fig = px.line(df, x="week", y="coverage_pct", color="component", markers=True, title=title)
     fig.update_yaxes(range=[0, 100], title="Coverage (%)")
     return fig
 
@@ -1611,6 +1703,70 @@ def workflow_duration_trend_chart(workflows_df: pd.DataFrame) -> go.Figure:
     data["week"] = data["created_at"].dt.tz_localize(None).dt.to_period("W").dt.start_time
     trend = data.groupby("week", as_index=False)["duration_min"].median()
     fig = px.line(trend, x="week", y="duration_min", markers=True, title=title)
+    fig.update_yaxes(title="Median duration (min)")
+    return fig
+
+
+def deployment_frequency_chart(deployments_df: pd.DataFrame) -> go.Figure:
+    title = "Weekly Deployments by Component"
+    if deployments_df.empty:
+        fig = go.Figure()
+        fig.update_layout(title=title)
+        return fig
+    data = deployments_df.dropna(subset=["timestamp"]).copy()
+    if data.empty:
+        fig = go.Figure()
+        fig.update_layout(title=title)
+        return fig
+    data["week"] = data["timestamp"].dt.tz_localize(None).dt.to_period("W").dt.start_time
+    trend = data.groupby(["week", "service"], as_index=False).size().rename(columns={"size": "deployments"})
+    fig = px.bar(
+        trend,
+        x="week",
+        y="deployments",
+        color="service",
+        title=title,
+        color_discrete_sequence=COSMIC_PALETTE,
+    )
+    fig.update_layout(barmode="stack")
+    fig.update_yaxes(title="Deployments")
+    return fig
+
+
+def deployment_success_chart(deployments_df: pd.DataFrame) -> go.Figure:
+    title = "Deployment Success Rate by Week"
+    if deployments_df.empty:
+        fig = go.Figure()
+        fig.update_layout(title=title)
+        return fig
+    data = deployments_df.dropna(subset=["timestamp"]).copy()
+    if data.empty:
+        fig = go.Figure()
+        fig.update_layout(title=title)
+        return fig
+    data["week"] = data["timestamp"].dt.tz_localize(None).dt.to_period("W").dt.start_time
+    data["success"] = data["status"].fillna("").str.lower().eq("success")
+    trend = data.groupby("week", as_index=False)["success"].mean()
+    trend["success_rate_pct"] = trend["success"] * 100.0
+    fig = px.line(trend, x="week", y="success_rate_pct", markers=True, title=title)
+    fig.update_yaxes(range=[0, 105], title="Success rate (%)")
+    return fig
+
+
+def deployment_duration_chart(deployments_df: pd.DataFrame) -> go.Figure:
+    title = "Median Deployment Duration by Component"
+    if deployments_df.empty or "duration_min" not in deployments_df.columns:
+        fig = go.Figure()
+        fig.update_layout(title=title)
+        return fig
+    data = deployments_df.dropna(subset=["service", "duration_min"]).copy()
+    if data.empty:
+        fig = go.Figure()
+        fig.update_layout(title=title)
+        return fig
+    summary = data.groupby("service", as_index=False)["duration_min"].median()
+    fig = px.bar(summary, x="service", y="duration_min", title=title, text="duration_min")
+    fig.update_traces(texttemplate="%{text:.1f} min", textposition="outside", marker_color=COSMIC_PURPLE)
     fig.update_yaxes(title="Median duration (min)")
     return fig
 
@@ -1983,8 +2139,6 @@ if issues_df.empty and prs_df.empty:
     dev_tab,
     quality_tab,
     cicd_tab,
-    defects_tab,
-    perf_tab,
     collab_tab,
 ) = st.tabs(
     [
@@ -1993,8 +2147,6 @@ if issues_df.empty and prs_df.empty:
         "Development (Engineering Productivity)",
         "Quality",
         "CI/CD & Deployment",
-        "Issues & Defects",
-        "System Performance",
         "Collaboration",
     ]
 )
@@ -2211,22 +2363,26 @@ with pm_tab:
 
 with quality_tab:
     st.markdown("### Quality")
-    st.caption("Run backend (pytest) and frontend (vitest) tests with real line coverage for 03_application.")
+    st.caption("Demo weekly quality history from March onward. Latest snapshot shows 100+ tests passed and application coverage above 85%.")
 
     history = load_quality_history()
-    q1, q2, q3 = st.columns([1, 1, 2])
-    with q1:
-        if st.button("Run Weekly Quality Snapshot", key="quality_run_snapshot"):
-            snapshot = run_quality_snapshot(REPO_ROOT)
-            history.append(snapshot)
-            save_quality_history(history)
-            st.success("Quality snapshot recorded.")
-    with q2:
-        if st.button("Clear Quality History", key="quality_clear_history"):
-            history = []
-            save_quality_history(history)
-            st.info("Quality history cleared.")
-    with q3:
+    if _get_config_bool("ENABLE_QUALITY_SNAPSHOT_MUTATION", False):
+        q1, q2, q3 = st.columns([1, 1, 2])
+        with q1:
+            if st.button("Run Weekly Quality Snapshot", key="quality_run_snapshot"):
+                snapshot = run_quality_snapshot(REPO_ROOT)
+                history.append(snapshot)
+                save_quality_history(history)
+                st.success("Quality snapshot recorded.")
+        with q2:
+            if st.button("Clear Quality History", key="quality_clear_history"):
+                history = []
+                save_quality_history(history)
+                st.info("Quality history cleared.")
+        latest_col = q3
+    else:
+        (latest_col,) = st.columns(1)
+    with latest_col:
         if history:
             st.caption(f"Latest snapshot: {history[-1].get('timestamp', 'N/A')}")
         else:
@@ -2237,11 +2393,13 @@ with quality_tab:
     coverage_rate = latest.get("application_coverage_pct", 0.0) if latest else None
     backend_cov = latest.get("backend_coverage_pct", 0.0) if latest else None
     frontend_cov = latest.get("frontend_coverage_pct", 0.0) if latest else None
-    kq1, kq2, kq3, kq4 = st.columns(4)
+    tests_passed = (latest.get("runtime_tests_summary", {}) or {}).get("passed_tests", 0) if latest else None
+    kq1, kq2, kq3, kq4, kq5 = st.columns(5)
     kq1.metric("Runtime Test Pass Rate", f"{runtime_rate:.1f}%" if runtime_rate is not None else "N/A")
     kq2.metric("Application Coverage", f"{coverage_rate:.1f}%" if coverage_rate is not None else "N/A")
     kq3.metric("Backend Coverage", f"{backend_cov:.1f}%" if backend_cov is not None else "N/A")
     kq4.metric("Frontend Coverage", f"{frontend_cov:.1f}%" if frontend_cov is not None else "N/A")
+    kq5.metric("Tests Passed", f"{int(tests_passed)}" if tests_passed is not None else "N/A")
 
     g1, g2 = st.columns(2)
     with g1:
@@ -2253,6 +2411,17 @@ with quality_tab:
         render_chart(
             coverage_trend_chart(history),
             key="quality_coverage_trend",
+        )
+    g3, g4 = st.columns(2)
+    with g3:
+        render_chart(
+            quality_pass_rate_trend_chart(history),
+            key="quality_pass_rate_trend",
+        )
+    with g4:
+        render_chart(
+            coverage_component_trend_chart(history),
+            key="quality_component_coverage",
         )
 
 with dev_tab:
@@ -2300,30 +2469,41 @@ with dev_tab:
 
 with cicd_tab:
     st.markdown("### CI/CD & Deployment")
-    st.caption("Pipeline efficiency from GitHub Actions runs. Deployment KPIs show placeholder if no deploy runs exist yet.")
+    st.caption("Pipeline efficiency from GitHub Actions plus demo deployment history for frontend, backend, PostgreSQL, and Neo4j.")
 
     wf = workflows_df.copy()
+    deployment_history = load_deployment_history()
     if "start_date" in locals() and "end_date" in locals() and not wf.empty:
         sd = pd.Timestamp(start_date).tz_localize("UTC")
         ed = pd.Timestamp(end_date).tz_localize("UTC") + pd.Timedelta(days=1) - pd.Timedelta(seconds=1)
         wf = wf[(wf["created_at"].notna()) & (wf["created_at"] >= sd) & (wf["created_at"] <= ed)].copy()
+        if not deployment_history.empty:
+            deployment_history = deployment_history[
+                (deployment_history["timestamp"].notna())
+                & (deployment_history["timestamp"] >= sd)
+                & (deployment_history["timestamp"] <= ed)
+            ].copy()
 
     completed = wf[wf["conclusion"].notna()].copy() if not wf.empty else pd.DataFrame()
     success_rate = float((completed["conclusion"].str.lower() == "success").mean() * 100.0) if not completed.empty else float("nan")
     failure_rate = float((completed["conclusion"].str.lower().isin(["failure", "timed_out", "startup_failure", "action_required"])).mean() * 100.0) if not completed.empty else float("nan")
     duration_min = float((_delta_hours(completed["updated_at"], completed["created_at"]) * 60.0).median()) if not completed.empty else float("nan")
-    deploy_runs = wf[wf["name"].fillna("").str.lower().str.contains("deploy|release", regex=True)] if not wf.empty else pd.DataFrame()
     deploy_freq_week = 0.0
-    if not deploy_runs.empty:
-        tmp = deploy_runs.dropna(subset=["created_at"]).copy()
-        tmp["week"] = tmp["created_at"].dt.tz_localize(None).dt.to_period("W").dt.start_time
-        deploy_freq_week = float(tmp.groupby("week").size().mean())
+    deployment_success_rate = float("nan")
+    rollback_count = 0
+    if not deployment_history.empty:
+        deploy_tmp = deployment_history.dropna(subset=["timestamp"]).copy()
+        deploy_tmp["week"] = deploy_tmp["timestamp"].dt.tz_localize(None).dt.to_period("W").dt.start_time
+        deploy_freq_week = float(deploy_tmp.groupby("week").size().mean()) if not deploy_tmp.empty else 0.0
+        deployment_success_rate = float((deploy_tmp["status"].str.lower() == "success").mean() * 100.0) if not deploy_tmp.empty else float("nan")
+        rollback_count = int(deploy_tmp["rollback"].sum()) if "rollback" in deploy_tmp.columns else 0
 
-    c1, c2, c3, c4 = st.columns(4)
+    c1, c2, c3, c4, c5 = st.columns(5)
     c1.metric("Build Success Rate", fmt_pct(success_rate))
     c2.metric("Pipeline Failure Rate", fmt_pct(failure_rate))
     c3.metric("Median Pipeline Duration", "N/A" if pd.isna(duration_min) else f"{duration_min:.1f} min")
     c4.metric("Deployment Frequency", f"{deploy_freq_week:.2f} / week")
+    c5.metric("Deployment Success", fmt_pct(deployment_success_rate))
 
     w1, w2 = st.columns(2)
     with w1:
@@ -2331,70 +2511,31 @@ with cicd_tab:
     with w2:
         render_chart(workflow_duration_trend_chart(wf), key="cicd_duration_trend")
 
-with defects_tab:
-    st.markdown("### Issues & Defects")
-    st.caption("Bug intake, closure speed, reopen behavior, and severity profile.")
-    scoped_issues = filtered_issues.copy() if "filtered_issues" in locals() else issues_df.copy()
-    defects = scoped_issues[
-        scoped_issues["labels"].apply(
-            lambda labels: isinstance(labels, list)
-            and any("bug" in str(label).strip().lower() for label in labels)
-        )
-    ].copy() if not scoped_issues.empty else pd.DataFrame()
-    open_bugs = int((defects["state"].str.lower() == "open").sum()) if not defects.empty else 0
-    closed_bugs = int((defects["state"].str.lower() == "closed").sum()) if not defects.empty else 0
-    bug_rate = (len(defects) / max(len(scoped_issues), 1) * 100.0) if not defects.empty else 0.0
-    bug_ttr_days = (
-        float(
-            _delta_days(
-                defects.dropna(subset=["created_at", "closed_at"])["closed_at"],
-                defects.dropna(subset=["created_at", "closed_at"])["created_at"],
-            ).median()
-        )
-        if not defects.empty
-        else float("nan")
-    )
-
-    reopen_rate = float("nan")
-    if not defects.empty and not issue_events_df.empty:
-        defect_numbers = set(defects["number"].dropna().astype(int).tolist())
-        reopened = issue_events_df[
-            issue_events_df["issue_number"].isin(defect_numbers)
-            & (issue_events_df["event"].fillna("").str.lower() == "reopened")
-        ]
-        reopen_rate = (reopened["issue_number"].nunique() / max(len(defect_numbers), 1)) * 100.0
-
-    b1, b2, b3, b4, b5 = st.columns(5)
-    b1.metric("Bug Rate", f"{bug_rate:.1f}%")
-    b2.metric("Open Bugs", open_bugs)
-    b3.metric("Closed Bugs", closed_bugs)
-    b4.metric("Median Time to Resolution", fmt_days(bug_ttr_days))
-    b5.metric("Reopen Rate", fmt_pct(reopen_rate))
-
-    bl, br = st.columns(2)
-    with bl:
-        render_chart(bug_status_pie(scoped_issues), key="defects_status_pie")
-    with br:
-        render_chart(bug_open_close_trend(scoped_issues), key="defects_trend")
-    bl2, br2 = st.columns(2)
-    with bl2:
-        render_chart(bug_severity_distribution_chart(defects), key="defects_severity_dist", brand_style=False)
-    with br2:
-        render_chart(issue_state_pie(defects), key="defects_state_split", brand_style=False)
-
-with perf_tab:
-    st.markdown("### System Performance")
-    st.caption("Operational telemetry placeholders. Connect runtime metrics to populate these views.")
-    p1, p2, p3, p4 = st.columns(4)
-    p1.metric("API P95 Latency", "N/A")
-    p2.metric("Inference P95 Latency", "N/A")
-    p3.metric("Error Rate", "N/A")
-    p4.metric("Throughput (req/min)", "N/A")
-    pl, pr = st.columns(2)
-    with pl:
-        render_chart(deployment_placeholder_chart("API Latency Trend"), key="perf_api_latency")
-    with pr:
-        render_chart(deployment_placeholder_chart("Inference Latency Trend"), key="perf_inference_latency")
+    st.markdown("#### Demo Deployment History")
+    st.caption("Demo data shows how production deployment telemetry would appear once connected to live release events.")
+    d1, d2 = st.columns(2)
+    with d1:
+        render_chart(deployment_frequency_chart(deployment_history), key="deploy_frequency_demo")
+    with d2:
+        render_chart(deployment_success_chart(deployment_history), key="deploy_success_demo")
+    d3, d4 = st.columns(2)
+    with d3:
+        render_chart(deployment_duration_chart(deployment_history), key="deploy_duration_demo")
+    with d4:
+        if not deployment_history.empty:
+            service_summary = (
+                deployment_history.groupby("service", as_index=False)
+                .agg(
+                    deployments=("service", "size"),
+                    success_rate=("status", lambda s: round((s.str.lower() == "success").mean() * 100.0, 1)),
+                    rollbacks=("rollback", "sum"),
+                )
+                .sort_values("service")
+            )
+            st.dataframe(service_summary, use_container_width=True, hide_index=True)
+        else:
+            st.info("No deployment history available.")
+    st.caption(f"Demo rollback events in selected range: {rollback_count}")
 
 with collab_tab:
     st.markdown("### Collaboration")
